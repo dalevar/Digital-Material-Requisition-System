@@ -598,6 +598,9 @@ export default function Show({ request, plants = [] }) {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
       {/* Process Stock Out Confirmation Modal */}
       <ConfirmationModal
         isOpen={stockOutModalOpen}
