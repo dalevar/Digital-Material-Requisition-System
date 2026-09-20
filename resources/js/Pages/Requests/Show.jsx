@@ -636,7 +636,7 @@ export default function Show({ request, plants = [] }) {
 
           <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-md text-amber-900 text-[11px] font-medium flex items-start space-x-2">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <span>⚠ Stock On Hand (SOH) will be deducted immediately. This action cannot be undone.</span>
+            <span>Stock On Hand (SOH) will be deducted immediately. This action cannot be undone.</span>
           </div>
         </div>
       </ConfirmationModal>

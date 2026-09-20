@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidRequestStateException;
+use App\Http\Requests\StoreStockAdjustmentRequest;
+use App\Http\Requests\StoreStockInRequest;
 use App\Models\Material;
 use App\Models\MaterialRequest;
 use App\Models\StockTransaction;
@@ -145,61 +147,59 @@ class StockController extends Controller
         ]);
     }
 
-    public function stockIn(Request $request, InventoryService $service): RedirectResponse
+    public function stockIn(StoreStockInRequest $request, InventoryService $service): RedirectResponse
     {
         $this->authorize('stockIn', StockTransaction::class);
 
-        $validated = $request->validate([
-            'material_id' => ['required', 'exists:materials,id'],
-            'qty' => ['required', 'numeric', 'gt:0'],
-            'reference_no' => ['required', 'string', 'max:100'],
-            'supplier' => ['nullable', 'string', 'max:100'],
-            'storage_location' => ['nullable', 'string', 'max:100'],
-            'note' => ['nullable', 'string', 'max:500'],
-        ]);
+        $material = Material::findOrFail($request->validated('material_id'));
+        if ($material->status !== 'ACTIVE') {
+            return back()->withErrors(['material_id' => "Material {$material->material_number} is INACTIVE and cannot be used for Stock In."]);
+        }
 
         try {
             $service->stockIn(
-                (int) $validated['material_id'],
-                (float) $validated['qty'],
-                $validated['reference_no'],
-                $request->user(),
-                $validated['supplier'] ?? null,
-                $validated['storage_location'] ?? null,
-                $validated['note'] ?? null
-            );
-
-            return back()->with('success', 'Stock In recorded successfully.');
-        } catch (\Throwable $e) {
-            Log::error('Stock In failed: '.$e->getMessage());
-
-            return back()->withErrors(['error' => 'Failed to record Stock In: '.$e->getMessage()]);
-        }
-    }
-
-    public function stockAdjustment(Request $request, InventoryService $service): RedirectResponse
-    {
-        $this->authorize('stockAdjustment', StockTransaction::class);
-
-        $validated = $request->validate([
-            'material_id' => ['required', 'exists:materials,id'],
-            'target_qty' => ['required', 'numeric', 'gte:0'],
-            'reason' => ['required', 'string', 'min:3', 'max:500'],
-        ]);
-
-        try {
-            $service->stockAdjustment(
-                (int) $validated['material_id'],
-                (float) $validated['target_qty'],
-                $validated['reason'],
+                $material,
+                $request->getQuantity(),
+                $request->getTransactionDate() ?? now(),
+                $request->getReferenceNo(),
+                $request->input('supplier'),
+                $request->input('storage_location'),
+                $request->input('note'),
                 $request->user()
             );
 
-            return back()->with('success', 'Stock Adjustment recorded successfully.');
+            return back()->with('success', 'Stock In berhasil diproses.');
+        } catch (\Throwable $e) {
+            Log::error('Stock In failed: '.$e->getMessage());
+
+            return back()->withErrors(['error' => 'Stock In gagal diproses: '.$e->getMessage()]);
+        }
+    }
+
+    public function stockAdjustment(StoreStockAdjustmentRequest $request, InventoryService $service): RedirectResponse
+    {
+        $this->authorize('stockAdjustment', StockTransaction::class);
+
+        $material = Material::findOrFail($request->validated('material_id'));
+        if ($material->status !== 'ACTIVE') {
+            return back()->withErrors(['material_id' => "Material {$material->material_number} is INACTIVE and cannot be used for Stock Adjustment."]);
+        }
+
+        try {
+            $service->stockAdjustment(
+                $material,
+                $request->getAdjustmentQuantity(),
+                $request->getTransactionDate() ?? now(),
+                $request->validated('reason'),
+                $request->input('note'),
+                $request->user()
+            );
+
+            return back()->with('success', 'Stock Adjustment berhasil diproses.');
         } catch (\Throwable $e) {
             Log::error('Stock Adjustment failed: '.$e->getMessage());
 
-            return back()->withErrors(['error' => 'Failed to record Stock Adjustment: '.$e->getMessage()]);
+            return back()->withErrors(['error' => 'Stock Adjustment gagal diproses: '.$e->getMessage()]);
         }
     }
 

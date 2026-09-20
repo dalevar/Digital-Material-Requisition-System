@@ -12,6 +12,7 @@ use App\Models\StockBalance;
 use App\Models\StockTransaction;
 use App\Models\User;
 use Exception;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class InventoryService
@@ -129,31 +130,39 @@ class InventoryService
     }
 
     public function stockIn(
-        int $materialId,
+        Material|int $material,
         float $qty,
-        string $referenceNo,
-        User $user,
+        Carbon|string|null $date = null,
+        ?string $referenceNo = null,
         ?string $supplier = null,
-        ?string $storageLoc = null,
-        ?string $note = null
+        ?string $storageLocation = null,
+        ?string $note = null,
+        ?User $user = null
     ): StockTransaction {
+        $materialModel = $material instanceof Material ? $material : Material::findOrFail($material);
+
+        if ($materialModel->status !== 'ACTIVE') {
+            throw new Exception("Material {$materialModel->material_number} is INACTIVE and cannot be used for Stock In.");
+        }
+
         if ($qty <= 0) {
             throw new Exception('Stock In quantity must be greater than zero.');
         }
 
-        return DB::transaction(function () use ($materialId, $qty, $referenceNo, $user, $supplier, $storageLoc, $note) {
-            $material = Material::findOrFail($materialId);
+        $transactionDate = $date ? ($date instanceof Carbon ? $date : Carbon::parse($date)) : now();
+        $user = $user ?? auth()->user();
 
-            $stockBalance = StockBalance::where('material_id', $materialId)
+        return DB::transaction(function () use ($materialModel, $qty, $transactionDate, $referenceNo, $supplier, $storageLocation, $note, $user) {
+            $stockBalance = StockBalance::where('material_id', $materialModel->id)
                 ->lockForUpdate()
                 ->first();
 
             if (! $stockBalance) {
                 $stockBalance = StockBalance::create([
-                    'material_id' => $materialId,
+                    'material_id' => $materialModel->id,
                     'quantity' => 0,
                 ]);
-                $stockBalance = StockBalance::where('material_id', $materialId)->lockForUpdate()->first();
+                $stockBalance = StockBalance::where('material_id', $materialModel->id)->lockForUpdate()->first();
             }
 
             $oldBalance = (float) $stockBalance->quantity;
@@ -162,7 +171,7 @@ class InventoryService
             $stockBalance->save();
 
             $transaction = StockTransaction::create([
-                'material_id' => $materialId,
+                'material_id' => $materialModel->id,
                 'transaction_type' => StockTransactionType::STOCK_IN,
                 'reference_type' => 'STOCK_IN_ENTRY',
                 'reference_id' => null,
@@ -171,9 +180,9 @@ class InventoryService
                 'qty_out' => 0,
                 'balance_after' => $newBalance,
                 'supplier' => $supplier,
-                'storage_location' => $storageLoc ?? $material->storage_location,
+                'storage_location' => $storageLocation ?? $materialModel->storage_location,
                 'reason' => 'Stock In Entry',
-                'transaction_date' => now(),
+                'transaction_date' => $transactionDate,
                 'user_id' => $user->id,
                 'note' => $note,
             ]);
@@ -185,8 +194,8 @@ class InventoryService
                 'StockTransaction',
                 (string) $transaction->id,
                 ['soh_before' => $oldBalance],
-                ['material_id' => $materialId, 'qty_in' => $qty, 'balance_after' => $newBalance],
-                "Stock In for material {$material->material_number}: +{$qty} {$material->uom}"
+                ['material_id' => $materialModel->id, 'qty_in' => $qty, 'balance_after' => $newBalance],
+                "Stock In material {$materialModel->material_number} sebanyak {$qty} {$materialModel->uom}."
             );
 
             return $transaction;
@@ -267,59 +276,79 @@ class InventoryService
     }
 
     public function stockAdjustment(
-        int $materialId,
-        float $targetQty,
-        string $reason,
-        User $user
+        Material|int $material,
+        float $adjustmentQuantity,
+        Carbon|string|null $date = null,
+        string $reason = '',
+        ?string $note = null,
+        ?User $user = null
     ): StockTransaction {
-        if ($targetQty < 0) {
-            throw new Exception('Target stock quantity cannot be negative.');
+        $materialModel = $material instanceof Material ? $material : Material::findOrFail($material);
+
+        if ($materialModel->status !== 'ACTIVE') {
+            throw new Exception("Material {$materialModel->material_number} is INACTIVE and cannot be used for Stock Adjustment.");
         }
 
-        return DB::transaction(function () use ($materialId, $targetQty, $reason, $user) {
-            $material = Material::findOrFail($materialId);
+        if (abs($adjustmentQuantity) < 0.00001) {
+            throw new Exception('Adjustment quantity cannot be zero.');
+        }
 
-            $stockBalance = StockBalance::where('material_id', $materialId)
+        if (empty(trim($reason))) {
+            throw new Exception('Adjustment reason is required.');
+        }
+
+        $transactionDate = $date ? ($date instanceof Carbon ? $date : Carbon::parse($date)) : now();
+        $user = $user ?? auth()->user();
+
+        return DB::transaction(function () use ($materialModel, $adjustmentQuantity, $transactionDate, $reason, $note, $user) {
+            $stockBalance = StockBalance::where('material_id', $materialModel->id)
                 ->lockForUpdate()
                 ->first();
 
             if (! $stockBalance) {
-                $stockBalance = StockBalance::create(['material_id' => $materialId, 'quantity' => 0]);
-                $stockBalance = StockBalance::where('material_id', $materialId)->lockForUpdate()->first();
+                $stockBalance = StockBalance::create(['material_id' => $materialModel->id, 'quantity' => 0]);
+                $stockBalance = StockBalance::where('material_id', $materialModel->id)->lockForUpdate()->first();
             }
 
-            $oldBalance = (float) $stockBalance->quantity;
-            $diff = $targetQty - $oldBalance;
+            $currentStock = (float) $stockBalance->quantity;
+            $finalStock = $currentStock + $adjustmentQuantity;
 
-            $stockBalance->quantity = $targetQty;
+            if ($finalStock < 0) {
+                throw new Exception('Adjustment would result in negative stock.');
+            }
+
+            $stockBalance->quantity = $finalStock;
             $stockBalance->save();
 
+            $qtyIn = $adjustmentQuantity > 0 ? $adjustmentQuantity : 0;
+            $qtyOut = $adjustmentQuantity < 0 ? abs($adjustmentQuantity) : 0;
+
             $transaction = StockTransaction::create([
-                'material_id' => $materialId,
+                'material_id' => $materialModel->id,
                 'transaction_type' => StockTransactionType::ADJUSTMENT,
                 'reference_type' => 'STOCK_ADJUSTMENT',
                 'reference_id' => null,
                 'reference_no' => 'ADJ-'.time(),
-                'qty_in' => $diff > 0 ? $diff : 0,
-                'qty_out' => $diff < 0 ? abs($diff) : 0,
-                'balance_after' => $targetQty,
+                'qty_in' => $qtyIn,
+                'qty_out' => $qtyOut,
+                'balance_after' => $finalStock,
                 'supplier' => null,
-                'storage_location' => $material->storage_location,
+                'storage_location' => $materialModel->storage_location,
                 'reason' => $reason,
-                'transaction_date' => now(),
+                'transaction_date' => $transactionDate,
                 'user_id' => $user->id,
-                'note' => "Adjusted from {$oldBalance} to {$targetQty}",
+                'note' => $note ?? "Adjusted stock from {$currentStock} to {$finalStock}",
             ]);
 
             AuditService::log(
                 $user,
-                'ADJUSTMENT',
+                'STOCK_ADJUSTMENT',
                 'Inventory',
                 'StockTransaction',
                 (string) $transaction->id,
-                ['balance_before' => $oldBalance],
-                ['balance_after' => $targetQty, 'reason' => $reason],
-                "Stock Adjustment for material {$material->material_number}: {$oldBalance} -> {$targetQty}"
+                ['balance_before' => $currentStock],
+                ['balance_after' => $finalStock, 'adjustment_quantity' => $adjustmentQuantity, 'reason' => $reason],
+                "Stock adjustment material {$materialModel->material_number} dari {$currentStock} menjadi {$finalStock} {$materialModel->uom}. Reason: {$reason}"
             );
 
             return $transaction;

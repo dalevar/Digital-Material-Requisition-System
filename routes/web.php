@@ -118,6 +118,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/inventory/history/excel', [StockController::class, 'exportHistoryExcel'])->name('inventory.history.excel');
         Route::post('/inventory/stock-in', [StockController::class, 'stockIn'])->middleware('role:ADMIN')->name('inventory.stock-in');
         Route::post('/inventory/stock-adjustment', [StockController::class, 'stockAdjustment'])->middleware('role:ADMIN')->name('inventory.stock-adjustment');
+
+        // Stock Route Aliases
+        Route::get('/stock', [StockController::class, 'overview'])->name('stock.overview');
+        Route::get('/stock/history', [StockController::class, 'history'])->name('stock.history');
+        Route::post('/stock/in', [StockController::class, 'stockIn'])->middleware('role:ADMIN')->name('stock.in');
+        Route::post('/stock/adjustment', [StockController::class, 'stockAdjustment'])->middleware('role:ADMIN')->name('stock.adjustment');
     });
 
     // Material Request Core Routes
