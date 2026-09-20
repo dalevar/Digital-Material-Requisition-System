@@ -1,0 +1,43 @@
+# Requirement-to-Implementation Traceability Matrix (DMRS)
+
+**Project:** Digital Material Requisition System (DMRS)  
+**Company:** PT. Guthrie International Pulau Laut Refinery  
+**SSOT Version:** PRD v1.5 | Database Arch v1.0 | Design System v1.0  
+
+---
+
+## Traceability Mapping
+
+| Requirement ID | Requirement Description | User Role | Page / Screen | Frontend Component | Backend API Endpoint | Service / Repository | Database Entity | Test Case ID |
+|---|---|---|---|---|---|---|---|---|
+| **REQ-AUTH-01** | User Authentication (Login/Logout) | All Roles | `/login` | `LoginForm`, `AuthLayout` | `POST /api/v1/auth/login`, `POST /api/v1/auth/logout` | `AuthService` | `users`, `user_sessions` | `TEST-AUTH-01` |
+| **REQ-AUTH-02** | Password Reset & Hash | All Roles | `/forgot-password`, `/reset-password` | `PasswordResetForm` | `POST /api/v1/auth/forgot-password`, `POST /api/v1/auth/reset-password` | `AuthService` | `password_reset_tokens` | `TEST-AUTH-02` |
+| **REQ-AUTH-03** | Role-Based Access Control (RBAC) & Route Protection | Admin, User, Approver | Application Shell | `Sidebar`, `Navigation`, `ProtectedRoute` | Middleware `Authenticate`, `EnsureRole` | `AuthorizationService` | `roles`, `users` | `TEST-AUTH-03` |
+| **REQ-USER-01** | User Management (CRUD, Assign Role, Dept, Plant, Approver) | Admin | `/admin/users` | `UserListTable`, `UserModalForm`, `UserStatusBadge` | `GET/POST/PUT/DELETE /api/v1/admin/users` | `UserService` | `users`, `roles`, `departments`, `plants` | `TEST-USER-01` |
+| **REQ-MST-01** | Material Category Master Management | Admin | `/admin/categories` | `CategoryTable`, `CategoryModalForm` | `GET/POST/PUT/DELETE /api/v1/admin/categories` | `MaterialCategoryService` | `material_categories` | `TEST-MST-01` |
+| **REQ-MST-02** | Department Master Management | Admin | `/admin/departments` | `DepartmentTable`, `DepartmentModalForm` | `GET/POST/PUT/DELETE /api/v1/admin/departments` | `DepartmentService` | `departments` | `TEST-MST-02` |
+| **REQ-MST-03** | Plant Master Management | Admin | `/admin/plants` | `PlantTable`, `PlantModalForm` | `GET/POST/PUT/DELETE /api/v1/admin/plants` | `PlantService` | `plants` | `TEST-MST-03` |
+| **REQ-MST-04** | Material Master Management (CRUD, Minimum/Maximum Stock, QR Code, Soft Deactivate) | Admin (View for User/Approver) | `/admin/materials`, `/materials` | `MaterialCatalogTable`, `MaterialDetailModal`, `StockLevelBadge` | `GET/POST/PUT/PATCH /api/v1/materials` | `MaterialService` | `materials`, `stock_balances` | `TEST-MST-04` |
+| **REQ-INV-01** | Stock In Recording | Admin | `/inventory/stock-in` | `StockInForm`, `StockTransactionTable` | `POST /api/v1/inventory/stock-in` | `InventoryService` | `stock_balances`, `stock_transactions` | `TEST-INV-01` |
+| **REQ-INV-02** | Stock Adjustment Recording | Admin | `/inventory/stock-adjustment` | `StockAdjustmentForm` | `POST /api/v1/inventory/stock-adjustment` | `InventoryService` | `stock_balances`, `stock_transactions` | `TEST-INV-02` |
+| **REQ-INV-03** | Stock History & Audit Log View | Admin | `/inventory/stock-history` | `StockHistoryTable`, `StockFilterBar` | `GET /api/v1/inventory/stock-history` | `InventoryService` | `stock_transactions` | `TEST-INV-03` |
+| **REQ-REQ-01** | Auto-generate Request Number (`MR-YYYY-NNNNNN`) & Separate Document Number (`no_doc`) | User, Admin | `/requests/create`, `/requests/:id` | `RequestHeaderForm`, `DocNumberInput` | System Auto Generator / `PATCH /api/v1/admin/requests/:id/no-doc` | `MaterialRequestService` | `material_requests` | `TEST-REQ-01` |
+| **REQ-REQ-02** | Material Request Creation & Draft Save | User, Admin | `/requests/create` | `MaterialRequestForm`, `ItemSelectorTable` | `POST /api/v1/requests` (Draft status) | `MaterialRequestService` | `material_requests`, `material_request_items` | `TEST-REQ-02` |
+| **REQ-REQ-03** | Material Selection, SOH Lookup & Automatic Balance Calculation (`Balance = SOH - Qty`) | User, Admin | `/requests/create` | `ItemRow`, `StockBalanceIndicator` | `GET /api/v1/materials/:id/soh` | `InventoryService` | `stock_balances` | `TEST-REQ-03` |
+| **REQ-REQ-04** | Request Submission (Validation, Assign Approver, Status set to PENDING_APPROVAL) | User, Admin | `/requests/:id` | `SubmitRequestButton`, `ValidationAlert` | `POST /api/v1/requests/:id/submit` | `MaterialRequestService`, `NotificationService` | `material_requests`, `approval_histories`, `notifications` | `TEST-REQ-04` |
+| **REQ-REQ-05** | Requester Request History & Rejection Reason View | User | `/user/requests` | `UserRequestTable`, `RejectionReasonBanner` | `GET /api/v1/user/requests` | `MaterialRequestService` | `material_requests` | `TEST-REQ-05` |
+| **REQ-APP-01** | Approval Inbox & Assigned Request Filtering | Executive / HoD | `/approvals/inbox` | `ApprovalInboxTable`, `RequestDetailView` | `GET /api/v1/approvals/pending` | `ApprovalService` | `material_requests` | `TEST-APP-01` |
+| **REQ-APP-02** | Request Approval Action (Set status APPROVED, Create approval record & audit log) | Executive / HoD | `/approvals/:id` | `ApproveModal`, `ApprovalHistoryTimeline` | `POST /api/v1/approvals/:id/approve` | `ApprovalService`, `NotificationService` | `material_requests`, `approval_histories`, `audit_logs` | `TEST-APP-02` |
+| **REQ-APP-03** | Request Rejection Action (Mandatory Rejection Reason, Set status REJECTED) | Executive / HoD | `/approvals/:id` | `RejectModalForm` | `POST /api/v1/approvals/:id/reject` | `ApprovalService`, `NotificationService` | `material_requests`, `approval_histories`, `audit_logs` | `TEST-APP-03` |
+| **REQ-ADM-01** | Admin Approved Request Supplement/Edit (Plant, G/L, PWO, Pur Org/Grp, Cost Center) | Admin | `/admin/requests/:id` | `AdminEditMRFForm`, `AuditDiffViewer` | `PATCH /api/v1/admin/requests/:id/supplement` | `MaterialRequestService`, `AuditService` | `material_requests`, `audit_logs` | `TEST-ADM-01` |
+| **REQ-ADM-02** | Admin Cancel/Reject Approved Request (Non-issue items, `CANCELLED_AFTER_APPROVAL`, Reversal logic) | Admin | `/admin/requests/:id` | `CancelApprovedModal` | `POST /api/v1/admin/requests/:id/cancel` | `MaterialRequestService`, `InventoryService` | `material_requests`, `stock_transactions`, `audit_logs` | `TEST-ADM-02` |
+| **REQ-ADM-03** | Stock Out Issue Processing (Create `STOCK_OUT` transaction on actual material issue) | Admin | `/admin/requests/:id/process-issue` | `IssueStockModal` | `POST /api/v1/admin/requests/:id/issue` | `InventoryService` | `stock_balances`, `stock_transactions`, `material_requests` | `TEST-ADM-03` |
+| **REQ-REP-01** | Material Request Reporting & Filter (Date, Department, Plant, Status) | Admin, Executive | `/reports/requests` | `RequestReportTable`, `ReportFilterBar` | `GET /api/v1/reports/requests` | `ReportService` | `material_requests`, `material_request_items` | `TEST-REP-01` |
+| **REQ-REP-02** | Stock Movement Report (Opening, In, Out, Adjustment, Closing, Min Stock Status) | Admin | `/reports/stock` | `StockReportTable` | `GET /api/v1/reports/stock` | `ReportService` | `materials`, `stock_transactions`, `stock_balances` | `TEST-REP-02` |
+| **REQ-REP-03** | Approval History Report | Admin, Executive | `/reports/approvals` | `ApprovalReportTable` | `GET /api/v1/reports/approvals` | `ReportService` | `approval_histories`, `material_requests` | `TEST-REP-03` |
+| **REQ-EXP-01** | Export Data to Excel / CSV | Admin, Executive | Report / Request Pages | `ExportButton` | `GET /api/v1/export/excel`, `GET /api/v1/export/csv` | `ExportService` | All Transaction Tables | `TEST-EXP-01` |
+| **REQ-EXP-02** | Download Printable PDF Material Requisition Form | Admin, User, Approver | Request Detail | `DownloadPDFButton` | `GET /api/v1/requests/:id/pdf` | `PdfService` | `material_requests`, `material_request_items` | `TEST-EXP-02` |
+| **REQ-AUD-01** | Immutable Audit Trail Logging & Viewer | Admin | `/admin/audit-trail` | `AuditLogTable`, `AuditDetailModal` | `GET /api/v1/admin/audit-logs` | `AuditService` | `audit_logs` | `TEST-AUD-01` |
+| **REQ-DASH-01** | Admin Dashboard Metrics & Quick Statistics | Admin | `/admin/dashboard` | `MetricCardGrid`, `RecentActivityList` | `GET /api/v1/dashboard/admin` | `DashboardService` | `material_requests`, `materials`, `stock_balances` | `TEST-DASH-01` |
+| **REQ-DASH-02** | User Requester Dashboard | User | `/dashboard` | `MyRequestSummary`, `RecentRequestList` | `GET /api/v1/dashboard/user` | `DashboardService` | `material_requests` | `TEST-DASH-02` |
+| **REQ-DASH-03** | Approver Dashboard & Approval Inbox Widget | Executive / HoD | `/approver/dashboard` | `PendingApprovalWidget` | `GET /api/v1/dashboard/approver` | `DashboardService` | `material_requests` | `TEST-DASH-03` |
