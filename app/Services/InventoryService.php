@@ -2,8 +2,12 @@
 
 namespace App\Services;
 
+use App\Enums\MaterialRequestStatus;
 use App\Enums\StockTransactionType;
+use App\Exceptions\InsufficientStockException;
+use App\Exceptions\InvalidRequestStateException;
 use App\Models\Material;
+use App\Models\MaterialRequest;
 use App\Models\StockBalance;
 use App\Models\StockTransaction;
 use App\Models\User;
@@ -12,6 +16,118 @@ use Illuminate\Support\Facades\DB;
 
 class InventoryService
 {
+    public function issueRequestStock(MaterialRequest $materialRequest, User $user): void
+    {
+        DB::transaction(function () use ($materialRequest, $user) {
+            /** @var MaterialRequest $request */
+            $request = MaterialRequest::where('id', $materialRequest->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! in_array($request->status, [MaterialRequestStatus::APPROVED, MaterialRequestStatus::PROCESSING])) {
+                throw new InvalidRequestStateException(
+                    "Request {$request->request_no} cannot be processed for stock out because its status is {$request->status->value}."
+                );
+            }
+
+            $request->loadMissing('items.material');
+            $shortages = [];
+
+            foreach ($request->items as $item) {
+                $material = $item->material;
+                if (! $material) {
+                    throw new Exception("Material associated with item ID {$item->id} was not found.");
+                }
+                if ($material->status !== 'ACTIVE') {
+                    throw new Exception("Material {$material->material_number} is INACTIVE and cannot be issued.");
+                }
+
+                $stockBalance = StockBalance::where('material_id', $item->material_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                $currentSoh = $stockBalance ? (float) $stockBalance->quantity : 0;
+                $requestedQty = (float) $item->qty;
+
+                if ($currentSoh < $requestedQty) {
+                    $shortages[] = [
+                        'material_number' => $material->material_number,
+                        'description' => $material->description,
+                        'required' => $requestedQty,
+                        'available' => $currentSoh,
+                        'shortage' => $requestedQty - $currentSoh,
+                        'uom' => $material->uom,
+                    ];
+                }
+            }
+
+            if (! empty($shortages)) {
+                $shortageLines = array_map(function ($s) {
+                    return "Material: {$s['material_number']} | Required: {$s['required']} {$s['uom']} | Available: {$s['available']} {$s['uom']} | Shortage: {$s['shortage']} {$s['uom']}";
+                }, $shortages);
+
+                throw new InsufficientStockException(
+                    "Unable to process Stock Out due to insufficient stock:\n".implode("\n", $shortageLines),
+                    $shortages
+                );
+            }
+
+            foreach ($request->items as $item) {
+                $stockBalance = StockBalance::where('material_id', $item->material_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                $oldBalance = (float) $stockBalance->quantity;
+                $requestedQty = (float) $item->qty;
+                $newBalance = $oldBalance - $requestedQty;
+
+                $stockBalance->quantity = $newBalance;
+                $stockBalance->save();
+
+                $tx = StockTransaction::create([
+                    'material_id' => $item->material_id,
+                    'transaction_type' => StockTransactionType::STOCK_OUT,
+                    'reference_type' => 'MATERIAL_REQUEST',
+                    'reference_id' => (string) $request->id,
+                    'reference_no' => $request->request_no,
+                    'qty_in' => 0,
+                    'qty_out' => $requestedQty,
+                    'balance_after' => $newBalance,
+                    'supplier' => null,
+                    'storage_location' => $item->material->storage_location,
+                    'reason' => 'Material Requisition Issue',
+                    'transaction_date' => now(),
+                    'user_id' => $user->id,
+                    'note' => "Stock issued for request {$request->request_no} (Item ID: {$item->id})",
+                ]);
+
+                AuditService::log(
+                    $user,
+                    'STOCK_OUT',
+                    'Inventory',
+                    'StockTransaction',
+                    (string) $tx->id,
+                    ['soh_before' => $oldBalance],
+                    ['material_id' => $item->material_id, 'qty_out' => $requestedQty, 'balance_after' => $newBalance],
+                    "Stock Out issued for material {$item->material->material_number}: -{$requestedQty} {$item->material->uom}"
+                );
+            }
+
+            $request->update(['status' => MaterialRequestStatus::COMPLETED]);
+
+            AuditService::log(
+                $user,
+                'PROCESS_STOCK_OUT',
+                'MaterialRequest',
+                'MaterialRequest',
+                (string) $request->id,
+                ['status' => MaterialRequestStatus::APPROVED->value],
+                ['status' => MaterialRequestStatus::COMPLETED->value],
+                "Processed Stock Out for request {$request->request_no} - marked as COMPLETED"
+            );
+        });
+    }
+
     public function stockIn(
         int $materialId,
         float $qty,
@@ -40,7 +156,9 @@ class InventoryService
                 $stockBalance = StockBalance::where('material_id', $materialId)->lockForUpdate()->first();
             }
 
-            $stockBalance->quantity += $qty;
+            $oldBalance = (float) $stockBalance->quantity;
+            $newBalance = $oldBalance + $qty;
+            $stockBalance->quantity = $newBalance;
             $stockBalance->save();
 
             $transaction = StockTransaction::create([
@@ -51,7 +169,7 @@ class InventoryService
                 'reference_no' => $referenceNo,
                 'qty_in' => $qty,
                 'qty_out' => 0,
-                'balance_after' => $stockBalance->quantity,
+                'balance_after' => $newBalance,
                 'supplier' => $supplier,
                 'storage_location' => $storageLoc ?? $material->storage_location,
                 'reason' => 'Stock In Entry',
@@ -66,8 +184,8 @@ class InventoryService
                 'Inventory',
                 'StockTransaction',
                 (string) $transaction->id,
-                null,
-                ['material_id' => $materialId, 'qty_in' => $qty, 'balance_after' => $stockBalance->quantity],
+                ['soh_before' => $oldBalance],
+                ['material_id' => $materialId, 'qty_in' => $qty, 'balance_after' => $newBalance],
                 "Stock In for material {$material->material_number}: +{$qty} {$material->uom}"
             );
 
@@ -89,7 +207,6 @@ class InventoryService
         }
 
         return DB::transaction(function () use ($materialId, $qty, $referenceNo, $user, $referenceType, $referenceId, $note) {
-            // Idempotency check: prevent duplicate stock out execution for same reference
             if ($referenceId) {
                 $existingTx = StockTransaction::where('material_id', $materialId)
                     ->where('transaction_type', StockTransactionType::STOCK_OUT)
@@ -98,7 +215,7 @@ class InventoryService
                     ->first();
 
                 if ($existingTx) {
-                    return $existingTx; // Idempotent return
+                    return $existingTx;
                 }
             }
 
@@ -111,7 +228,7 @@ class InventoryService
             $currentSoh = $stockBalance ? (float) $stockBalance->quantity : 0;
 
             if ($currentSoh < $qty) {
-                throw new Exception("Insufficient stock for material {$material->material_number}. Available SOH: {$currentSoh}, Requested: {$qty}");
+                throw new InsufficientStockException("Insufficient stock for material {$material->material_number}. Available SOH: {$currentSoh}, Requested: {$qty}");
             }
 
             $stockBalance->quantity -= $qty;
@@ -219,7 +336,6 @@ class InventoryService
         ?string $referenceId = null
     ): StockTransaction {
         return DB::transaction(function () use ($materialId, $qty, $referenceNo, $user, $reason, $referenceType, $referenceId) {
-            // Idempotency check for reversal
             if ($referenceId) {
                 $existingRev = StockTransaction::where('material_id', $materialId)
                     ->where('transaction_type', StockTransactionType::REVERSAL)

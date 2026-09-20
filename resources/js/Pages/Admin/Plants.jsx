@@ -2,7 +2,8 @@ import React, { useState, useCallback } from 'react';
 import { Head, useForm, router, Link } from '@inertiajs/react';
 import AppShell from '@/Layouts/AppShell';
 import EmptyState from '@/Components/EmptyState';
-import { Factory, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import ConfirmationModal from '@/Components/ConfirmationModal';
+import { Factory, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight, Power, PowerOff } from 'lucide-react';
 
 function Pagination({ meta }) {
   if (!meta || meta.last_page <= 1) return null;
@@ -74,6 +75,8 @@ export default function Plants({ plants = { data: [] }, filters = {} }) {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPlant, setEditingPlant] = useState(null);
+  const [togglePlant, setTogglePlant] = useState(null);
+  const [toggleModalOpen, setToggleModalOpen] = useState(false);
   const [search, setSearch] = useState(filters.search ?? '');
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '');
 
@@ -118,6 +121,30 @@ export default function Plants({ plants = { data: [] }, filters = {} }) {
       is_active: Boolean(plant.is_active),
     });
     setModalOpen(true);
+  };
+
+  const openToggleModal = (plant) => {
+    setTogglePlant(plant);
+    setToggleModalOpen(true);
+  };
+
+  const handleConfirmToggle = () => {
+    if (!togglePlant) return;
+    router.put(
+      `/admin/plants/${togglePlant.id}`,
+      {
+        code: togglePlant.code,
+        name: togglePlant.name,
+        location: togglePlant.location,
+        is_active: !togglePlant.is_active,
+      },
+      {
+        onSuccess: () => {
+          setToggleModalOpen(false);
+          setTogglePlant(null);
+        },
+      }
+    );
   };
 
   const handleSubmit = (e) => {
@@ -206,7 +233,7 @@ export default function Plants({ plants = { data: [] }, filters = {} }) {
                   <th className="px-4 py-3">Plant Name</th>
                   <th className="px-4 py-3">Location</th>
                   <th className="px-4 py-3 text-center">Status</th>
-                  <th className="px-4 py-3 text-right">Action</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -226,13 +253,25 @@ export default function Plants({ plants = { data: [] }, filters = {} }) {
                         {p.is_active ? 'ACTIVE' : 'INACTIVE'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right space-x-1">
                       <button
                         onClick={() => openEditModal(p)}
                         className="p-1 text-slate-500 hover:text-red-600 transition-colors"
                         title="Edit Plant"
                       >
                         <Edit className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => openToggleModal(p)}
+                        className={`p-1 transition-colors ${
+                          p.is_active
+                            ? 'text-slate-500 hover:text-rose-600'
+                            : 'text-slate-500 hover:text-emerald-600'
+                        }`}
+                        title={p.is_active ? 'Deactivate Plant' : 'Activate Plant'}
+                      >
+                        {p.is_active ? <PowerOff className="w-4 h-4 text-rose-600" /> : <Power className="w-4 h-4 text-emerald-600" />}
                       </button>
                     </td>
                   </tr>
@@ -244,7 +283,7 @@ export default function Plants({ plants = { data: [] }, filters = {} }) {
           <EmptyState
             icon={Factory}
             title="No plants found"
-            description={search || statusFilter ? "No plants match your criteria." : "Click 'Add New Plant' to register plant locations."}
+            description={search || statusFilter ? 'No plants match your criteria.' : "Click 'Add New Plant' to register plant locations."}
           />
         )}
         <Pagination meta={meta} />
@@ -331,6 +370,20 @@ export default function Plants({ plants = { data: [] }, filters = {} }) {
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal for Activate/Deactivate */}
+      <ConfirmationModal
+        isOpen={toggleModalOpen}
+        onClose={() => setToggleModalOpen(false)}
+        onConfirm={handleConfirmToggle}
+        title={togglePlant?.is_active ? 'Deactivate Plant' : 'Activate Plant'}
+        description={`Are you sure you want to ${
+          togglePlant?.is_active ? 'deactivate' : 'activate'
+        } plant ${togglePlant?.name} (${togglePlant?.code})?`}
+        confirmText={togglePlant?.is_active ? 'Deactivate' : 'Activate'}
+        cancelText="Cancel"
+        variant={togglePlant?.is_active ? 'danger' : 'success'}
+      />
     </AppShell>
   );
 }

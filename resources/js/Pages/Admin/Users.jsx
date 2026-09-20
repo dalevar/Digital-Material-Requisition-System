@@ -2,7 +2,8 @@ import React, { useState, useCallback } from 'react';
 import { Head, useForm, router, Link } from '@inertiajs/react';
 import AppShell from '@/Layouts/AppShell';
 import EmptyState from '@/Components/EmptyState';
-import { Users as UsersIcon, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import ConfirmationModal from '@/Components/ConfirmationModal';
+import { Users as UsersIcon, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight, KeyRound, Power, PowerOff } from 'lucide-react';
 
 function Pagination({ meta }) {
   if (!meta || meta.last_page <= 1) return null;
@@ -74,6 +75,11 @@ export default function UsersIndex({ users, roles = [], departments = [], plants
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [toggleUser, setToggleUser] = useState(null);
+  const [toggleModalOpen, setToggleModalOpen] = useState(false);
+  const [resetUser, setResetUser] = useState(null);
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+
   const [search, setSearch] = useState(filters.search ?? '');
   const [roleFilter, setRoleFilter] = useState(filters.role_id ?? '');
   const [deptFilter, setDeptFilter] = useState(filters.department_id ?? '');
@@ -92,6 +98,10 @@ export default function UsersIndex({ users, roles = [], departments = [], plants
     approver_id: '',
     position: '',
     status: 'ACTIVE',
+  });
+
+  const resetPasswordForm = useForm({
+    password: '',
   });
 
   const activeFilterCount = [roleFilter, deptFilter, statusFilter].filter(Boolean).length;
@@ -141,6 +151,55 @@ export default function UsersIndex({ users, roles = [], departments = [], plants
       status: u.status,
     });
     setModalOpen(true);
+  };
+
+  const openToggleStatus = (u) => {
+    setToggleUser(u);
+    setToggleModalOpen(true);
+  };
+
+  const handleConfirmToggleStatus = () => {
+    if (!toggleUser) return;
+    const newStatus = toggleUser.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+
+    router.put(
+      `/admin/users/${toggleUser.id}`,
+      {
+        name: toggleUser.name,
+        email: toggleUser.email,
+        role_id: toggleUser.role_id,
+        department_id: toggleUser.department_id,
+        plant_id: toggleUser.plant_id,
+        approver_id: toggleUser.approver_id,
+        position: toggleUser.position,
+        status: newStatus,
+      },
+      {
+        onSuccess: () => {
+          setToggleModalOpen(false);
+          setToggleUser(null);
+        },
+      }
+    );
+  };
+
+  const openResetPassword = (u) => {
+    setResetUser(u);
+    resetPasswordForm.reset();
+    resetPasswordForm.clearErrors();
+    setResetModalOpen(true);
+  };
+
+  const handleResetPasswordSubmit = (e) => {
+    e.preventDefault();
+    if (!resetUser) return;
+
+    resetPasswordForm.post(`/admin/users/${resetUser.id}/reset-password`, {
+      onSuccess: () => {
+        setResetModalOpen(false);
+        setResetUser(null);
+      },
+    });
   };
 
   const handleSubmit = (e) => {
@@ -232,7 +291,9 @@ export default function UsersIndex({ users, roles = [], departments = [], plants
               >
                 <option value="">All Roles</option>
                 {roles.map((r) => (
-                  <option key={r.id} value={r.id}>{r.name}</option>
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -245,7 +306,9 @@ export default function UsersIndex({ users, roles = [], departments = [], plants
               >
                 <option value="">All Departments</option>
                 {departments.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -278,7 +341,7 @@ export default function UsersIndex({ users, roles = [], departments = [], plants
                   <th className="p-3.5">Department / Plant</th>
                   <th className="p-3.5">Approver</th>
                   <th className="p-3.5">Status</th>
-                  <th className="p-3.5 text-right">Action</th>
+                  <th className="p-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -287,7 +350,9 @@ export default function UsersIndex({ users, roles = [], departments = [], plants
                     <td className="p-3.5 font-bold text-slate-900">{u.employee_id}</td>
                     <td className="p-3.5">
                       <div className="font-bold text-slate-900">{u.name}</div>
-                      <div className="text-slate-400 text-[11px]">{u.username} • {u.email}</div>
+                      <div className="text-slate-400 text-[11px]">
+                        {u.username} • {u.email}
+                      </div>
                     </td>
                     <td className="p-3.5 font-bold text-red-600">{u.role?.name}</td>
                     <td className="p-3.5">
@@ -296,13 +361,43 @@ export default function UsersIndex({ users, roles = [], departments = [], plants
                     </td>
                     <td className="p-3.5 text-slate-700">{u.approver?.name || '-'}</td>
                     <td className="p-3.5">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${u.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          u.status === 'ACTIVE'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-rose-50 text-rose-700 border border-rose-200'
+                        }`}
+                      >
                         {u.status}
                       </span>
                     </td>
-                    <td className="p-3.5 text-right">
-                      <button onClick={() => openEdit(u)} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Edit User">
+                    <td className="p-3.5 text-right space-x-1">
+                      <button
+                        onClick={() => openEdit(u)}
+                        className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                        title="Edit User"
+                      >
                         <Edit className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => openResetPassword(u)}
+                        className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-colors"
+                        title="Reset User Password"
+                      >
+                        <KeyRound className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => openToggleStatus(u)}
+                        className={`p-1.5 rounded-md transition-colors ${
+                          u.status === 'ACTIVE'
+                            ? 'text-slate-500 hover:text-rose-600 hover:bg-rose-50'
+                            : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50'
+                        }`}
+                        title={u.status === 'ACTIVE' ? 'Disable User' : 'Enable User'}
+                      >
+                        {u.status === 'ACTIVE' ? <PowerOff className="w-4 h-4 text-rose-600" /> : <Power className="w-4 h-4 text-emerald-600" />}
                       </button>
                     </td>
                   </tr>
@@ -314,7 +409,7 @@ export default function UsersIndex({ users, roles = [], departments = [], plants
           <EmptyState
             icon={UsersIcon}
             title="No users found"
-            description={search || activeFilterCount > 0 ? "No users match your criteria." : "No users exist in the system."}
+            description={search || activeFilterCount > 0 ? 'No users match your criteria.' : 'No users exist in the system.'}
           />
         )}
         <Pagination meta={meta} />
@@ -396,7 +491,11 @@ export default function UsersIndex({ users, roles = [], departments = [], plants
                     required
                   >
                     <option value="">Select Role...</option>
-                    {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    {roles.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
                   </select>
                   {form.errors.role_id && <div className="text-red-500 text-[10px] mt-0.5">{form.errors.role_id}</div>}
                 </div>
@@ -408,7 +507,11 @@ export default function UsersIndex({ users, roles = [], departments = [], plants
                     className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-md"
                   >
                     <option value="">Select Department...</option>
-                    {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -419,7 +522,11 @@ export default function UsersIndex({ users, roles = [], departments = [], plants
                     className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-md"
                   >
                     <option value="">Select Plant...</option>
-                    {plants.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    {plants.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -430,7 +537,11 @@ export default function UsersIndex({ users, roles = [], departments = [], plants
                     className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-md"
                   >
                     <option value="">Select Approver...</option>
-                    {approvers.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    {approvers.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -447,11 +558,81 @@ export default function UsersIndex({ users, roles = [], departments = [], plants
               </div>
 
               <div className="flex justify-end space-x-2 pt-3">
-                <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs rounded-md font-semibold text-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs rounded-md font-semibold text-slate-700"
+                >
                   Cancel
                 </button>
-                <button type="submit" disabled={form.processing} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs rounded-md font-semibold shadow-xs transition-colors">
+                <button
+                  type="submit"
+                  disabled={form.processing}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs rounded-md font-semibold shadow-xs transition-colors"
+                >
                   {form.processing ? 'Saving...' : 'Save User'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Enable / Disable Status Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={toggleModalOpen}
+        onClose={() => setToggleModalOpen(false)}
+        onConfirm={handleConfirmToggleStatus}
+        title={toggleUser?.status === 'ACTIVE' ? 'Disable User Account' : 'Enable User Account'}
+        description={`Are you sure you want to ${
+          toggleUser?.status === 'ACTIVE' ? 'disable' : 'enable'
+        } user account for ${toggleUser?.name} (${toggleUser?.username})?`}
+        confirmText={toggleUser?.status === 'ACTIVE' ? 'Disable User' : 'Enable User'}
+        cancelText="Cancel"
+        variant={toggleUser?.status === 'ACTIVE' ? 'danger' : 'success'}
+      />
+
+      {/* Reset Password Modal */}
+      {resetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+          <div className="bg-white max-w-md w-full rounded-lg p-6 shadow-xl space-y-4">
+            <h3 className="text-base font-bold text-slate-900">Reset User Password</h3>
+            <p className="text-xs text-slate-500">
+              Set a new secure password for user <strong className="text-slate-900">{resetUser?.username}</strong>.
+            </p>
+
+            <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  New Password <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="password"
+                  value={resetPasswordForm.data.password}
+                  onChange={(e) => resetPasswordForm.setData('password', e.target.value)}
+                  placeholder="Enter new password (min. 6 chars)"
+                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none"
+                  required
+                />
+                {resetPasswordForm.errors.password && (
+                  <p className="text-xs text-red-600 mt-1 font-medium">{resetPasswordForm.errors.password}</p>
+                )}
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setResetModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-md"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetPasswordForm.processing}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs rounded-md shadow-xs"
+                >
+                  {resetPasswordForm.processing ? 'Resetting...' : 'Reset Password'}
                 </button>
               </div>
             </form>

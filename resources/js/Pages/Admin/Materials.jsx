@@ -2,7 +2,8 @@ import React, { useState, useCallback } from 'react';
 import { Head, useForm, router, Link } from '@inertiajs/react';
 import AppShell from '@/Layouts/AppShell';
 import EmptyState from '@/Components/EmptyState';
-import { Package, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import ConfirmationModal from '@/Components/ConfirmationModal';
+import { Package, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight, Power, PowerOff, Download } from 'lucide-react';
 
 function Pagination({ meta }) {
   if (!meta || meta.last_page <= 1) return null;
@@ -74,6 +75,8 @@ export default function MaterialsIndex({ materials = { data: [] }, categories = 
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingMat, setEditingMat] = useState(null);
+  const [toggleMat, setToggleMat] = useState(null);
+  const [toggleModalOpen, setToggleModalOpen] = useState(false);
   const [search, setSearch] = useState(filters.search ?? '');
   const [catFilter, setCatFilter] = useState(filters.category_id ?? '');
   const [plantFilter, setPlantFilter] = useState(filters.plant_id ?? '');
@@ -116,6 +119,16 @@ export default function MaterialsIndex({ materials = { data: [] }, categories = 
     router.get('/admin/materials', {}, { preserveScroll: true });
   };
 
+  const getExportUrl = () => {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (catFilter) params.append('category_id', catFilter);
+    if (plantFilter) params.append('plant_id', plantFilter);
+    if (statusFilter) params.append('status', statusFilter);
+
+    return `/admin/materials/excel?${params.toString()}`;
+  };
+
   const openCreate = () => {
     setEditingMat(null);
     form.reset();
@@ -139,6 +152,36 @@ export default function MaterialsIndex({ materials = { data: [] }, categories = 
       initial_stock: 0,
     });
     setModalOpen(true);
+  };
+
+  const openToggleModal = (m) => {
+    setToggleMat(m);
+    setToggleModalOpen(true);
+  };
+
+  const handleConfirmToggle = () => {
+    if (!toggleMat) return;
+    const newStatus = toggleMat.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+
+    router.put(
+      `/admin/materials/${toggleMat.id}`,
+      {
+        description: toggleMat.description,
+        category_id: toggleMat.category_id,
+        uom: toggleMat.uom,
+        minimum_stock: toggleMat.minimum_stock,
+        maximum_stock: toggleMat.maximum_stock,
+        storage_location: toggleMat.storage_location,
+        plant_id: toggleMat.plant_id,
+        status: newStatus,
+      },
+      {
+        onSuccess: () => {
+          setToggleModalOpen(false);
+          setToggleMat(null);
+        },
+      }
+    );
   };
 
   const handleSubmit = (e) => {
@@ -166,13 +209,24 @@ export default function MaterialsIndex({ materials = { data: [] }, categories = 
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Master Material Catalog</h1>
           <p className="text-xs text-slate-500 mt-0.5">Manage master material items, categories, reorder levels, and storage locations.</p>
         </div>
-        <button
-          onClick={openCreate}
-          className="inline-flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs font-semibold shadow-xs transition-colors shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Material Master</span>
-        </button>
+
+        <div className="flex items-center space-x-2 shrink-0">
+          <a
+            href={getExportUrl()}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-semibold shadow-xs transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export Catalog Excel</span>
+          </a>
+
+          <button
+            onClick={openCreate}
+            className="inline-flex items-center space-x-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs font-semibold shadow-xs transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Material Master</span>
+          </button>
+        </div>
       </div>
 
       {/* Toolbar & Filters */}
@@ -230,7 +284,9 @@ export default function MaterialsIndex({ materials = { data: [] }, categories = 
               >
                 <option value="">All Categories</option>
                 {categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -243,7 +299,9 @@ export default function MaterialsIndex({ materials = { data: [] }, categories = 
               >
                 <option value="">All Plants</option>
                 {plants.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -276,8 +334,8 @@ export default function MaterialsIndex({ materials = { data: [] }, categories = 
                   <th className="px-4 py-3 text-center">UoM</th>
                   <th className="px-4 py-3 text-right">Min Stock</th>
                   <th className="px-4 py-3 text-right">Current SOH</th>
-                  <th className="px-4 py-3">Location</th>
-                  <th className="px-4 py-3 text-right">Action</th>
+                  <th className="px-4 py-3 text-center">Status</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -288,11 +346,39 @@ export default function MaterialsIndex({ materials = { data: [] }, categories = 
                     <td className="px-4 py-3 text-slate-600">{m.category?.name || '-'}</td>
                     <td className="px-4 py-3 text-center font-semibold text-slate-500">{m.uom}</td>
                     <td className="px-4 py-3 text-right font-mono text-slate-600">{parseFloat(m.minimum_stock).toFixed(2)}</td>
-                    <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">{parseFloat(m.stock_balance?.quantity || 0).toFixed(2)}</td>
-                    <td className="px-4 py-3 text-slate-600">{m.storage_location || '-'}</td>
-                    <td className="px-4 py-3 text-right">
-                      <button onClick={() => openEdit(m)} className="p-1.5 text-slate-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors" title="Edit Material">
+                    <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">
+                      {parseFloat(m.stock_balance?.quantity || 0).toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                          m.status === 'ACTIVE'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-rose-50 text-rose-700 border-rose-200'
+                        }`}
+                      >
+                        {m.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right space-x-1">
+                      <button
+                        onClick={() => openEdit(m)}
+                        className="p-1.5 text-slate-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+                        title="Edit Material"
+                      >
                         <Edit className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => openToggleModal(m)}
+                        className={`p-1.5 rounded-md transition-colors ${
+                          m.status === 'ACTIVE'
+                            ? 'text-slate-500 hover:text-rose-600 hover:bg-rose-50'
+                            : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50'
+                        }`}
+                        title={m.status === 'ACTIVE' ? 'Deactivate Material' : 'Activate Material'}
+                      >
+                        {m.status === 'ACTIVE' ? <PowerOff className="w-4 h-4 text-rose-600" /> : <Power className="w-4 h-4 text-emerald-600" />}
                       </button>
                     </td>
                   </tr>
@@ -304,7 +390,11 @@ export default function MaterialsIndex({ materials = { data: [] }, categories = 
           <EmptyState
             icon={Package}
             title="No material master records"
-            description={search || activeFilterCount > 0 ? "No materials match your criteria." : "Click 'Add Material Master' to register new material items in the system."}
+            description={
+              search || activeFilterCount > 0
+                ? 'No materials match your criteria.'
+                : "Click 'Add Material Master' to register new material items in the system."
+            }
           />
         )}
         <Pagination meta={meta} />
@@ -343,7 +433,11 @@ export default function MaterialsIndex({ materials = { data: [] }, categories = 
                     required
                   >
                     <option value="">Select Category...</option>
-                    {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
                   </select>
                   {form.errors.category_id && <div className="text-red-500 text-[10px] mt-0.5">{form.errors.category_id}</div>}
                 </div>
@@ -449,6 +543,20 @@ export default function MaterialsIndex({ materials = { data: [] }, categories = 
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal for Activate/Deactivate */}
+      <ConfirmationModal
+        isOpen={toggleModalOpen}
+        onClose={() => setToggleModalOpen(false)}
+        onConfirm={handleConfirmToggle}
+        title={toggleMat?.status === 'ACTIVE' ? 'Deactivate Material' : 'Activate Material'}
+        description={`Are you sure you want to ${
+          toggleMat?.status === 'ACTIVE' ? 'deactivate' : 'activate'
+        } material master ${toggleMat?.material_number} (${toggleMat?.description})?`}
+        confirmText={toggleMat?.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+        cancelText="Cancel"
+        variant={toggleMat?.status === 'ACTIVE' ? 'danger' : 'success'}
+      />
     </AppShell>
   );
 }

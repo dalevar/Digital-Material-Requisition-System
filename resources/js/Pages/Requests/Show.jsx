@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Head, useForm, usePage, Link, router } from '@inertiajs/react';
 import AppShell from '@/Layouts/AppShell';
 import StatusBadge from '@/Components/StatusBadge';
+import ConfirmationModal from '@/Components/ConfirmationModal';
 import { Download, ArrowLeft, CheckCircle2, XCircle, Edit, Ban, Boxes, AlertTriangle, Check, Clock, User, Building2, Factory, Calendar, ShieldCheck, Info } from 'lucide-react';
 
 export default function Show({ request, plants = [] }) {
@@ -17,6 +18,8 @@ export default function Show({ request, plants = [] }) {
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [supplementModalOpen, setSupplementModalOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [stockOutModalOpen, setStockOutModalOpen] = useState(false);
+  const [stockOutProcessing, setStockOutProcessing] = useState(false);
 
   // Forms
   const approveForm = useForm({ reason: '' });
@@ -61,10 +64,14 @@ export default function Show({ request, plants = [] }) {
     });
   };
 
-  const handleIssueStock = () => {
-    if (confirm("Are you sure you want to issue stock for this request? This will create a STOCK_OUT transaction, deduct SOH, and mark request as COMPLETED.")) {
-      router.post(`/admin/requests/${request.id}/issue-stock`);
-    }
+  const handleConfirmStockOut = () => {
+    setStockOutProcessing(true);
+    router.post(`/admin/requests/${request.id}/issue-stock`, {}, {
+      onFinish: () => {
+        setStockOutProcessing(false);
+        setStockOutModalOpen(false);
+      },
+    });
   };
 
   const canApprove = (user.role === 'APPROVER' || user.role === 'EXECUTIVE') &&
@@ -153,7 +160,7 @@ export default function Show({ request, plants = [] }) {
 
           {canIssueStock && (
             <button
-              onClick={handleIssueStock}
+              onClick={() => setStockOutModalOpen(true)}
               className="inline-flex items-center space-x-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs font-semibold shadow-xs transition-colors"
             >
               <Boxes className="w-4 h-4" />
@@ -591,8 +598,45 @@ export default function Show({ request, plants = [] }) {
               </div>
             </form>
           </div>
+      {/* Process Stock Out Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={stockOutModalOpen}
+        onClose={() => setStockOutModalOpen(false)}
+        onConfirm={handleConfirmStockOut}
+        title="Process Stock Out"
+        description="Are you sure you want to process stock out for this request?"
+        confirmText="Process Stock Out"
+        cancelText="Cancel"
+        variant="danger"
+        processing={stockOutProcessing}
+      >
+        <div className="space-y-3 bg-slate-50 p-3.5 rounded-lg border border-slate-200 text-xs mt-2">
+          <div>
+            <span className="font-semibold text-slate-500">Request Number:</span>
+            <span className="font-bold font-mono text-slate-900 ml-2">{request.request_no}</span>
+          </div>
+
+          <div>
+            <span className="font-semibold text-slate-500 block mb-1">Material Items to Issue:</span>
+            <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+              {request.items && request.items.map((item) => (
+                <div key={item.id} className="flex items-center justify-between p-2 bg-white rounded border border-slate-200 text-xs">
+                  <div>
+                    <span className="font-bold text-red-700">{item.material?.material_number}</span>
+                    <span className="text-slate-700 ml-2 font-medium">{item.description}</span>
+                  </div>
+                  <span className="font-bold text-slate-900 font-mono">{parseFloat(item.qty).toFixed(2)} {item.uom}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-md text-amber-900 text-[11px] font-medium flex items-start space-x-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <span>⚠ Stock On Hand (SOH) will be deducted immediately. This action cannot be undone.</span>
+          </div>
         </div>
-      )}
+      </ConfirmationModal>
     </AppShell>
   );
 }

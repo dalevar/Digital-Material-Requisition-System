@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppShell from '@/Layouts/AppShell';
 import EmptyState from '@/Components/EmptyState';
-import { History, Filter, X, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileBarChart, Filter, X, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 
 function Pagination({ meta }) {
   if (!meta || meta.last_page <= 1) return null;
@@ -66,10 +66,10 @@ function Pagination({ meta }) {
   );
 }
 
-export default function StockHistory({ transactions = { data: [] }, materials = [], users = [], filters = {} }) {
+export default function StockMovementReport({ movements = { data: [] }, materials = [], users = [], filters = {} }) {
   const breadcrumbs = [
-    { title: 'Stock Control', href: '/inventory/overview' },
-    { title: 'Stock History', href: null },
+    { title: 'Reports', href: '/reports/requests' },
+    { title: 'Stock Movement Report', href: null },
   ];
 
   const [search, setSearch] = useState(filters.search ?? '');
@@ -81,11 +81,11 @@ export default function StockHistory({ transactions = { data: [] }, materials = 
 
   const activeFilterCount = [materialId, txType, userId, dateFrom, dateTo].filter(Boolean).length;
 
-  const handleFilter = useCallback(
+  const applyFilters = useCallback(
     (e) => {
       if (e) e.preventDefault();
       router.get(
-        '/inventory/history',
+        '/reports/stock-movement',
         {
           search: search || undefined,
           material_id: materialId || undefined,
@@ -100,14 +100,14 @@ export default function StockHistory({ transactions = { data: [] }, materials = 
     [search, materialId, txType, userId, dateFrom, dateTo]
   );
 
-  const handleReset = () => {
+  const resetFilters = () => {
     setSearch('');
     setMaterialId('');
     setTxType('');
     setUserId('');
     setDateFrom('');
     setDateTo('');
-    router.get('/inventory/history', {}, { preserveScroll: true });
+    router.get('/reports/stock-movement', {}, { preserveScroll: true });
   };
 
   const getExportUrl = () => {
@@ -119,22 +119,21 @@ export default function StockHistory({ transactions = { data: [] }, materials = 
     if (dateFrom) params.append('date_from', dateFrom);
     if (dateTo) params.append('date_to', dateTo);
 
-    return `/inventory/history/excel?${params.toString()}`;
+    return `/reports/stock-movement/excel?${params.toString()}`;
   };
 
-  const data = transactions?.data ?? [];
-  const meta = transactions?.meta ?? transactions;
+  const data = movements?.data ?? [];
+  const meta = movements?.meta ?? movements;
 
   return (
-    <AppShell title="Stock Movement History" breadcrumbs={breadcrumbs}>
-      <Head title="Stock Transaction History - DMRS" />
+    <AppShell title="Stock Movement Report" breadcrumbs={breadcrumbs}>
+      <Head title="Stock Movement Report - DMRS" />
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Stock Transaction History & Audit Ledger</h1>
-          <p className="text-xs text-slate-500">Immutable audit log of all Stock In, Stock Out, Physical Adjustments, and Reversals.</p>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Stock Movement Report</h1>
+          <p className="text-xs text-slate-500">Comprehensive audit report of all material movements, stock entries, issues, and adjustments.</p>
         </div>
-
         <a
           href={getExportUrl()}
           className="inline-flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-semibold shadow-xs transition-colors shrink-0"
@@ -144,8 +143,8 @@ export default function StockHistory({ transactions = { data: [] }, materials = 
         </a>
       </div>
 
-      {/* Filter Bar */}
-      <form onSubmit={handleFilter} className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs mb-6 space-y-3">
+      {/* Filter Toolbar */}
+      <form onSubmit={applyFilters} className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs mb-6 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-6 gap-3">
           <div className="col-span-1 sm:col-span-2">
             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Search Keyword</label>
@@ -154,7 +153,7 @@ export default function StockHistory({ transactions = { data: [] }, materials = 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Material, Reference No, Note, User…"
-              className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
 
@@ -163,9 +162,9 @@ export default function StockHistory({ transactions = { data: [] }, materials = 
             <select
               value={materialId}
               onChange={(e) => setMaterialId(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
             >
-              <option value="">All Catalog Materials</option>
+              <option value="">All Materials</option>
               {materials.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.material_number} - {m.description}
@@ -179,13 +178,13 @@ export default function StockHistory({ transactions = { data: [] }, materials = 
             <select
               value={txType}
               onChange={(e) => setTxType(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
             >
-              <option value="">All Transaction Types</option>
-              <option value="STOCK_IN">STOCK_IN (Incoming)</option>
-              <option value="STOCK_OUT">STOCK_OUT (Dispatched)</option>
-              <option value="ADJUSTMENT">ADJUSTMENT (Physical Count)</option>
-              <option value="REVERSAL">REVERSAL (Cancellation Return)</option>
+              <option value="">All Types</option>
+              <option value="STOCK_IN">STOCK_IN</option>
+              <option value="STOCK_OUT">STOCK_OUT</option>
+              <option value="ADJUSTMENT">ADJUSTMENT</option>
+              <option value="REVERSAL">REVERSAL</option>
             </select>
           </div>
 
@@ -195,7 +194,7 @@ export default function StockHistory({ transactions = { data: [] }, materials = 
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
 
@@ -205,7 +204,7 @@ export default function StockHistory({ transactions = { data: [] }, materials = 
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
         </div>
@@ -214,7 +213,7 @@ export default function StockHistory({ transactions = { data: [] }, materials = 
           {(search || activeFilterCount > 0) && (
             <button
               type="button"
-              onClick={handleReset}
+              onClick={resetFilters}
               className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-red-600 flex items-center space-x-1"
             >
               <X className="w-3.5 h-3.5" />
@@ -227,17 +226,17 @@ export default function StockHistory({ transactions = { data: [] }, materials = 
             className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-md shadow-xs flex items-center space-x-1.5"
           >
             <Filter className="w-3.5 h-3.5" />
-            <span>Apply Filter</span>
+            <span>Apply Filters</span>
           </button>
         </div>
       </form>
 
-      {/* Transaction Table */}
+      {/* Movement Table */}
       <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
         <div className="p-4 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <History className="w-4 h-4 text-red-600" />
-            <h2 className="text-sm font-bold text-slate-900">Stock Transaction Ledger</h2>
+            <FileBarChart className="w-4 h-4 text-red-600" />
+            <h2 className="text-sm font-bold text-slate-900">Material Stock Movement Register</h2>
           </div>
         </div>
 
@@ -247,13 +246,15 @@ export default function StockHistory({ transactions = { data: [] }, materials = 
               <thead className="bg-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-600 border-b border-slate-200">
                 <tr>
                   <th className="px-4 py-3">Date & Time</th>
-                  <th className="px-4 py-3">Material No</th>
-                  <th className="px-4 py-3">Transaction Type</th>
+                  <th className="px-4 py-3">Material Number</th>
+                  <th className="px-4 py-3">Description</th>
+                  <th className="px-4 py-3 text-center">Type</th>
                   <th className="px-4 py-3">Reference No</th>
                   <th className="px-4 py-3 text-right">Qty In</th>
                   <th className="px-4 py-3 text-right">Qty Out</th>
-                  <th className="px-4 py-3 text-right">Balance After</th>
+                  <th className="px-4 py-3 text-right">Balance</th>
                   <th className="px-4 py-3">Executed By</th>
+                  <th className="px-4 py-3">Note / Reason</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -263,7 +264,8 @@ export default function StockHistory({ transactions = { data: [] }, materials = 
                     <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 text-slate-600 font-medium">{tx.transaction_date}</td>
                       <td className="px-4 py-3 font-bold text-red-700">{tx.material?.material_number || '-'}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 font-medium text-slate-900">{tx.material?.description || '-'}</td>
+                      <td className="px-4 py-3 text-center">
                         <span
                           className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${
                             type === 'STOCK_IN'
@@ -289,6 +291,9 @@ export default function StockHistory({ transactions = { data: [] }, materials = 
                         {parseFloat(tx.balance_after || 0).toFixed(2)}
                       </td>
                       <td className="px-4 py-3 font-medium text-slate-900">{tx.user?.name || 'System'}</td>
+                      <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate" title={tx.note || tx.reason || ''}>
+                        {tx.note || tx.reason || '-'}
+                      </td>
                     </tr>
                   );
                 })}
@@ -297,9 +302,9 @@ export default function StockHistory({ transactions = { data: [] }, materials = 
           </div>
         ) : (
           <EmptyState
-            icon={History}
-            title="No stock transaction history"
-            description="No inventory transactions match your current search criteria."
+            icon={FileBarChart}
+            title="No stock movement records"
+            description="No inventory transaction records match your search and filter criteria."
           />
         )}
         <Pagination meta={meta} />

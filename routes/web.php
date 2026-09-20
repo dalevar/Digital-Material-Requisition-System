@@ -89,8 +89,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/admin/users', [UserController::class, 'index'])->name('admin.users.index');
         Route::post('/admin/users', [UserController::class, 'store'])->name('admin.users.store');
         Route::put('/admin/users/{user}', [UserController::class, 'update'])->name('admin.users.update');
+        Route::post('/admin/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('admin.users.reset-password');
 
         Route::get('/admin/materials', [MaterialController::class, 'index'])->name('admin.materials.index');
+        Route::get('/admin/materials/excel', [MaterialController::class, 'exportExcel'])->name('admin.materials.excel');
         Route::post('/admin/materials', [MaterialController::class, 'store'])->name('admin.materials.store');
         Route::put('/admin/materials/{material}', [MaterialController::class, 'update'])->name('admin.materials.update');
 
@@ -117,6 +119,7 @@ Route::middleware('auth')->group(function () {
     // Inventory Routes
     Route::get('/inventory/overview', [StockController::class, 'overview'])->name('inventory.overview');
     Route::get('/inventory/history', [StockController::class, 'history'])->name('inventory.history');
+    Route::get('/inventory/history/excel', [StockController::class, 'exportHistoryExcel'])->name('inventory.history.excel');
     Route::post('/inventory/stock-in', [StockController::class, 'stockIn'])->middleware('role:ADMIN')->name('inventory.stock-in');
     Route::post('/inventory/stock-adjustment', [StockController::class, 'stockAdjustment'])->middleware('role:ADMIN')->name('inventory.stock-adjustment');
 
@@ -131,6 +134,8 @@ Route::middleware('auth')->group(function () {
     // Report Routes
     Route::get('/reports/requests', [ReportController::class, 'requestReport'])->name('reports.requests');
     Route::get('/reports/stock', [ReportController::class, 'stockReport'])->name('reports.stock');
+    Route::get('/reports/stock-movement', [ReportController::class, 'stockMovementReport'])->middleware('role:ADMIN,APPROVER,EXECUTIVE')->name('reports.stock-movement');
+    Route::get('/reports/stock-movement/excel', [ReportController::class, 'exportStockMovementExcel'])->middleware('role:ADMIN,APPROVER,EXECUTIVE')->name('reports.stock-movement.excel');
     Route::get('/reports/approvals', [ReportController::class, 'approvalReport'])->middleware('role:ADMIN,APPROVER,EXECUTIVE')->name('reports.approvals');
     Route::get('/reports/requests/excel', [ReportController::class, 'exportRequestExcel'])->name('reports.requests.excel');
     Route::get('/reports/approvals/excel', [ReportController::class, 'exportApprovalExcel'])->middleware('role:ADMIN,APPROVER,EXECUTIVE')->name('reports.approvals.excel');

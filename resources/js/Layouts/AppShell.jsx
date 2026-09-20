@@ -95,6 +95,12 @@ export default function AppShell({ children, title, breadcrumbs = [] }) {
                     show: user?.role === "ADMIN" || user?.role === "APPROVER",
                 },
                 {
+                    name: "Stock Movement Report",
+                    href: "/reports/stock-movement",
+                    icon: FileBarChart,
+                    show: user?.role === "ADMIN" || user?.role === "APPROVER" || user?.role === "EXECUTIVE",
+                },
+                {
                     name: "Stock Report",
                     href: "/reports/stock",
                     icon: FileBarChart,

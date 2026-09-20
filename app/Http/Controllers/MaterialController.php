@@ -11,10 +11,12 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class MaterialController extends Controller
 {
-    public function index(Request $request): Response
+    private function getMaterialsQuery(Request $request)
     {
         $query = Material::with(['category', 'plant', 'stockBalance']);
 
@@ -38,7 +40,14 @@ class MaterialController extends Controller
             $query->where('status', $request->status);
         }
 
-        $materials = $query->orderBy('id', 'desc')->paginate(15)->withQueryString();
+        return $query->orderBy('id', 'desc');
+    }
+
+    public function index(Request $request): Response
+    {
+        $query = $this->getMaterialsQuery($request);
+
+        $materials = $query->paginate(15)->withQueryString();
         $categories = MaterialCategory::where('is_active', true)->get();
         $plants = Plant::where('is_active', true)->get();
 
@@ -47,6 +56,55 @@ class MaterialController extends Controller
             'categories' => $categories,
             'plants' => $plants,
             'filters' => $request->only(['search', 'category_id', 'plant_id', 'status']),
+        ]);
+    }
+
+    public function exportExcel(Request $request)
+    {
+        $materials = $this->getMaterialsQuery($request)->get();
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Master Materials');
+
+        $headers = [
+            'Material Number',
+            'Description',
+            'Category',
+            'UoM',
+            'Min Stock',
+            'Max Stock',
+            'Current SOH',
+            'Storage Location',
+            'Plant',
+            'Status',
+        ];
+        $sheet->fromArray($headers, null, 'A1');
+
+        $row = 2;
+        foreach ($materials as $m) {
+            $sheet->fromArray([
+                $m->material_number,
+                $m->description,
+                $m->category?->name ?? '-',
+                $m->uom,
+                (float) $m->minimum_stock,
+                (float) $m->maximum_stock,
+                (float) ($m->stockBalance?->quantity ?? 0),
+                $m->storage_location ?? '-',
+                $m->plant?->name ?? '-',
+                $m->status,
+            ], null, "A{$row}");
+            $row++;
+        }
+
+        $writer = new Xlsx($spreadsheet);
+        $fileName = 'dmrs-master-materials-'.date('Y-m-d-H-i').'.xlsx';
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);
     }
 

@@ -224,20 +224,46 @@ export default function StockOverview({ materials = { data: [] } }) {
             <p className="text-xs text-slate-500">Adjust physical stock quantity for <strong className="text-slate-900">{selectedMat?.material_number}</strong>.</p>
 
             <form onSubmit={handleAdjSubmit} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Target Physical Stock Qty <span className="text-red-600">*</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={adjForm.data.target_qty}
-                  onChange={(e) => adjForm.setData('target_qty', e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Current Stock (SOH)</label>
+                  <input
+                    type="text"
+                    value={parseFloat(selectedMat?.stock_balance?.quantity || 0).toFixed(2)}
+                    disabled
+                    className="w-full px-3 py-2 text-xs bg-slate-100 font-mono font-bold text-slate-700 border border-slate-200 rounded-md cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Final Stock <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={adjForm.data.target_qty}
+                    onChange={(e) => adjForm.setData('target_qty', e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-white font-mono font-bold border border-slate-300 rounded-md focus:border-red-600 focus:outline-none"
+                    required
+                  />
+                </div>
               </div>
+
+              {selectedMat && (
+                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-md text-xs flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">Calculated Adjustment Delta:</span>
+                  <span className={`font-mono font-bold ${
+                    (parseFloat(adjForm.data.target_qty || 0) - parseFloat(selectedMat.stock_balance?.quantity || 0)) >= 0
+                      ? 'text-emerald-700'
+                      : 'text-red-700'
+                  }`}>
+                    {(parseFloat(adjForm.data.target_qty || 0) - parseFloat(selectedMat.stock_balance?.quantity || 0)) >= 0 ? '+' : ''}
+                    {(parseFloat(adjForm.data.target_qty || 0) - parseFloat(selectedMat.stock_balance?.quantity || 0)).toFixed(2)} {selectedMat.uom}
+                  </span>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -247,7 +273,7 @@ export default function StockOverview({ materials = { data: [] } }) {
                   rows="2"
                   value={adjForm.data.reason}
                   onChange={(e) => adjForm.setData('reason', e.target.value)}
-                  placeholder="Reason for physical stock discrepancy..."
+                  placeholder="Mandatory reason for physical stock discrepancy..."
                   className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none"
                   required
                 />
@@ -258,7 +284,7 @@ export default function StockOverview({ materials = { data: [] } }) {
                   Cancel
                 </button>
                 <button type="submit" disabled={adjForm.processing} className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs rounded-md font-semibold shadow-xs">
-                  Confirm Adjustment
+                  {adjForm.processing ? 'Saving...' : 'Confirm Adjustment'}
                 </button>
               </div>
             </form>

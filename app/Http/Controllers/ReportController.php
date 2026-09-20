@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Material;
 use App\Models\MaterialRequest;
 use App\Models\StockTransaction;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -13,6 +14,121 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ReportController extends Controller
 {
+    private function getStockMovementQuery(Request $request)
+    {
+        $query = StockTransaction::with(['material.category', 'user']);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('reference_no', 'LIKE', "%{$search}%")
+                    ->orWhere('note', 'LIKE', "%{$search}%")
+                    ->orWhere('reason', 'LIKE', "%{$search}%")
+                    ->orWhereHas('material', function ($mq) use ($search) {
+                        $mq->where('material_number', 'LIKE', "%{$search}%")
+                            ->orWhere('description', 'LIKE', "%{$search}%");
+                    })
+                    ->orWhereHas('user', function ($uq) use ($search) {
+                        $uq->where('name', 'LIKE', "%{$search}%")
+                            ->orWhere('username', 'LIKE', "%{$search}%");
+                    });
+            });
+        }
+
+        if ($request->filled('material_id')) {
+            $query->where('material_id', $request->material_id);
+        }
+
+        if ($request->filled('transaction_type')) {
+            $query->where('transaction_type', $request->transaction_type);
+        }
+
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('transaction_date', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('transaction_date', '<=', $request->date_to);
+        }
+
+        return $query->orderBy('id', 'desc');
+    }
+
+    public function stockMovementReport(Request $request): Response
+    {
+        $query = $this->getStockMovementQuery($request);
+        $movements = $query->paginate(20)->withQueryString();
+
+        $materials = Material::select('id', 'material_number', 'description')->orderBy('material_number')->get();
+        $users = User::select('id', 'name', 'username')->orderBy('name')->get();
+
+        return Inertia::render('Reports/StockMovementReport', [
+            'movements' => $movements,
+            'materials' => $materials,
+            'users' => $users,
+            'filters' => $request->only(['search', 'material_id', 'transaction_type', 'user_id', 'date_from', 'date_to']),
+        ]);
+    }
+
+    public function exportStockMovementExcel(Request $request)
+    {
+        $movements = $this->getStockMovementQuery($request)->get();
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Stock Movement');
+
+        $headers = [
+            'Date & Time',
+            'Material Number',
+            'Description',
+            'UoM',
+            'Transaction Type',
+            'Reference No',
+            'Qty In',
+            'Qty Out',
+            'Balance After',
+            'Executed By',
+            'Supplier',
+            'Storage Location',
+            'Reason / Note',
+        ];
+        $sheet->fromArray($headers, null, 'A1');
+
+        $row = 2;
+        foreach ($movements as $tx) {
+            $sheet->fromArray([
+                $tx->transaction_date ? date('Y-m-d H:i:s', strtotime($tx->transaction_date)) : '-',
+                $tx->material?->material_number ?? '-',
+                $tx->material?->description ?? '-',
+                $tx->material?->uom ?? '-',
+                is_object($tx->transaction_type) ? $tx->transaction_type->value : (string) $tx->transaction_type,
+                $tx->reference_no ?? '-',
+                (float) $tx->qty_in,
+                (float) $tx->qty_out,
+                (float) $tx->balance_after,
+                $tx->user?->name ?? 'System',
+                $tx->supplier ?? '-',
+                $tx->storage_location ?? '-',
+                $tx->note ?? $tx->reason ?? '-',
+            ], null, "A{$row}");
+            $row++;
+        }
+
+        $writer = new Xlsx($spreadsheet);
+        $fileName = 'dmrs-stock-movement-'.date('Y-m-d-H-i').'.xlsx';
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
     public function requestReport(Request $request): Response
     {
         $query = MaterialRequest::with(['requester', 'department', 'plant', 'approver', 'items.material']);
@@ -67,13 +183,26 @@ class ReportController extends Controller
 
     public function exportRequestExcel(Request $request)
     {
-        $requests = MaterialRequest::with(['requester', 'department', 'plant', 'approver', 'items.material'])->get();
+        $query = MaterialRequest::with(['requester', 'department', 'plant', 'approver', 'items.material']);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('request_date', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('request_date', '<=', $request->date_to);
+        }
+
+        $requests = $query->orderBy('id', 'desc')->get();
 
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Material Requests');
 
-        // Headers
         $headers = ['Request No', 'Doc No', 'Date', 'Requester', 'Department', 'Plant', 'GL Account', 'Cost Center', 'Status', 'Approver', 'Approved Date'];
         $sheet->fromArray($headers, null, 'A1');
 
@@ -88,7 +217,7 @@ class ReportController extends Controller
                 $mr->plant?->name ?? '-',
                 $mr->gl_account ?? '-',
                 $mr->cost_center ?? '-',
-                $mr->status->value,
+                is_object($mr->status) ? $mr->status->value : (string) $mr->status,
                 $mr->approver?->name ?? '-',
                 $mr->approved_at?->format('Y-m-d H:i') ?? '-',
             ], null, "A{$row}");
@@ -185,7 +314,7 @@ class ReportController extends Controller
                 $mr->department?->name ?? '-',
                 $mr->plant?->name ?? '-',
                 $mr->approver?->name ?? '-',
-                $mr->status->value,
+                is_object($mr->status) ? $mr->status->value : (string) $mr->status,
                 $actionDate,
                 $reason,
             ], null, "A{$row}");

@@ -2,7 +2,8 @@ import React, { useState, useCallback } from 'react';
 import { Head, useForm, router, Link } from '@inertiajs/react';
 import AppShell from '@/Layouts/AppShell';
 import EmptyState from '@/Components/EmptyState';
-import { Package, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import ConfirmationModal from '@/Components/ConfirmationModal';
+import { Package, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight, Power, PowerOff } from 'lucide-react';
 
 function Pagination({ meta }) {
   if (!meta || meta.last_page <= 1) return null;
@@ -74,6 +75,8 @@ export default function Categories({ categories = { data: [] }, filters = {} }) 
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCat, setEditingCat] = useState(null);
+  const [toggleCat, setToggleCat] = useState(null);
+  const [toggleModalOpen, setToggleModalOpen] = useState(false);
   const [search, setSearch] = useState(filters.search ?? '');
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '');
 
@@ -116,6 +119,29 @@ export default function Categories({ categories = { data: [] }, filters = {} }) 
       is_active: Boolean(cat.is_active),
     });
     setModalOpen(true);
+  };
+
+  const openToggleModal = (cat) => {
+    setToggleCat(cat);
+    setToggleModalOpen(true);
+  };
+
+  const handleConfirmToggle = () => {
+    if (!toggleCat) return;
+    router.put(
+      `/admin/categories/${toggleCat.id}`,
+      {
+        code: toggleCat.code,
+        name: toggleCat.name,
+        is_active: !toggleCat.is_active,
+      },
+      {
+        onSuccess: () => {
+          setToggleModalOpen(false);
+          setToggleCat(null);
+        },
+      }
+    );
   };
 
   const handleSubmit = (e) => {
@@ -203,7 +229,7 @@ export default function Categories({ categories = { data: [] }, filters = {} }) 
                   <th className="px-4 py-3">Code</th>
                   <th className="px-4 py-3">Category Name</th>
                   <th className="px-4 py-3 text-center">Status</th>
-                  <th className="px-4 py-3 text-right">Action</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -222,13 +248,25 @@ export default function Categories({ categories = { data: [] }, filters = {} }) 
                         {cat.is_active ? 'ACTIVE' : 'INACTIVE'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right space-x-1">
                       <button
                         onClick={() => openEditModal(cat)}
                         className="p-1 text-slate-500 hover:text-red-600 transition-colors"
                         title="Edit Category"
                       >
                         <Edit className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => openToggleModal(cat)}
+                        className={`p-1 transition-colors ${
+                          cat.is_active
+                            ? 'text-slate-500 hover:text-rose-600'
+                            : 'text-slate-500 hover:text-emerald-600'
+                        }`}
+                        title={cat.is_active ? 'Deactivate Category' : 'Activate Category'}
+                      >
+                        {cat.is_active ? <PowerOff className="w-4 h-4 text-rose-600" /> : <Power className="w-4 h-4 text-emerald-600" />}
                       </button>
                     </td>
                   </tr>
@@ -240,7 +278,7 @@ export default function Categories({ categories = { data: [] }, filters = {} }) 
           <EmptyState
             icon={Package}
             title="No material categories found"
-            description={search || statusFilter ? "No categories match your criteria." : "Click 'Add New Category' to register material categories."}
+            description={search || statusFilter ? 'No categories match your criteria.' : "Click 'Add New Category' to register material categories."}
           />
         )}
         <Pagination meta={meta} />
@@ -316,6 +354,20 @@ export default function Categories({ categories = { data: [] }, filters = {} }) 
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal for Activate/Deactivate */}
+      <ConfirmationModal
+        isOpen={toggleModalOpen}
+        onClose={() => setToggleModalOpen(false)}
+        onConfirm={handleConfirmToggle}
+        title={toggleCat?.is_active ? 'Deactivate Material Category' : 'Activate Material Category'}
+        description={`Are you sure you want to ${
+          toggleCat?.is_active ? 'deactivate' : 'activate'
+        } category ${toggleCat?.name} (${toggleCat?.code})?`}
+        confirmText={toggleCat?.is_active ? 'Deactivate' : 'Activate'}
+        cancelText="Cancel"
+        variant={toggleCat?.is_active ? 'danger' : 'success'}
+      />
     </AppShell>
   );
 }

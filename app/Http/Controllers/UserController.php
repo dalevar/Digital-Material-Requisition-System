@@ -87,7 +87,7 @@ class UserController extends Controller
             'User',
             (string) $user->id,
             null,
-            $user->toArray(),
+            ['id' => $user->id, 'username' => $user->username, 'name' => $user->name, 'role_id' => $user->role_id],
             "Created user {$user->username}"
         );
 
@@ -110,7 +110,13 @@ class UserController extends Controller
             'status' => ['required', 'in:ACTIVE,INACTIVE'],
         ]);
 
-        $oldData = $user->toArray();
+        $oldData = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'role_id' => $user->role_id,
+            'department_id' => $user->department_id,
+            'status' => $user->status,
+        ];
 
         if (! empty($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
@@ -120,6 +126,14 @@ class UserController extends Controller
 
         $user->update($validated);
 
+        $newData = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'role_id' => $user->role_id,
+            'department_id' => $user->department_id,
+            'status' => $user->status,
+        ];
+
         AuditService::log(
             $request->user(),
             'UPDATE_USER',
@@ -127,10 +141,36 @@ class UserController extends Controller
             'User',
             (string) $user->id,
             $oldData,
-            $user->toArray(),
+            $newData,
             "Updated user {$user->username}"
         );
 
         return back()->with('success', "User {$user->username} updated successfully.");
+    }
+
+    public function resetPassword(User $user, Request $request): RedirectResponse
+    {
+        $this->authorize('update', $user);
+
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'min:6'],
+        ]);
+
+        $user->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        AuditService::log(
+            $request->user(),
+            'RESET_PASSWORD_USER',
+            'UserManagement',
+            'User',
+            (string) $user->id,
+            null,
+            ['user_id' => $user->id, 'action' => 'password_reset_by_admin'],
+            "Reset password for user {$user->username}"
+        );
+
+        return back()->with('success', "Password for user {$user->username} has been reset successfully.");
     }
 }

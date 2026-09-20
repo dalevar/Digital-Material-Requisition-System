@@ -2,7 +2,8 @@ import React, { useState, useCallback } from 'react';
 import { Head, useForm, router, Link } from '@inertiajs/react';
 import AppShell from '@/Layouts/AppShell';
 import EmptyState from '@/Components/EmptyState';
-import { Building2, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import ConfirmationModal from '@/Components/ConfirmationModal';
+import { Building2, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight, Power, PowerOff } from 'lucide-react';
 
 function Pagination({ meta }) {
   if (!meta || meta.last_page <= 1) return null;
@@ -74,6 +75,8 @@ export default function Departments({ departments = { data: [] }, filters = {} }
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingDept, setEditingDept] = useState(null);
+  const [toggleDept, setToggleDept] = useState(null);
+  const [toggleModalOpen, setToggleModalOpen] = useState(false);
   const [search, setSearch] = useState(filters.search ?? '');
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '');
 
@@ -116,6 +119,29 @@ export default function Departments({ departments = { data: [] }, filters = {} }
       is_active: Boolean(dept.is_active),
     });
     setModalOpen(true);
+  };
+
+  const openToggleModal = (dept) => {
+    setToggleDept(dept);
+    setToggleModalOpen(true);
+  };
+
+  const handleConfirmToggle = () => {
+    if (!toggleDept) return;
+    router.put(
+      `/admin/departments/${toggleDept.id}`,
+      {
+        code: toggleDept.code,
+        name: toggleDept.name,
+        is_active: !toggleDept.is_active,
+      },
+      {
+        onSuccess: () => {
+          setToggleModalOpen(false);
+          setToggleDept(null);
+        },
+      }
+    );
   };
 
   const handleSubmit = (e) => {
@@ -203,7 +229,7 @@ export default function Departments({ departments = { data: [] }, filters = {} }
                   <th className="px-4 py-3">Code</th>
                   <th className="px-4 py-3">Department Name</th>
                   <th className="px-4 py-3 text-center">Status</th>
-                  <th className="px-4 py-3 text-right">Action</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -222,13 +248,25 @@ export default function Departments({ departments = { data: [] }, filters = {} }
                         {dept.is_active ? 'ACTIVE' : 'INACTIVE'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right space-x-1">
                       <button
                         onClick={() => openEditModal(dept)}
                         className="p-1 text-slate-500 hover:text-red-600 transition-colors"
                         title="Edit Department"
                       >
                         <Edit className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => openToggleModal(dept)}
+                        className={`p-1 transition-colors ${
+                          dept.is_active
+                            ? 'text-slate-500 hover:text-rose-600'
+                            : 'text-slate-500 hover:text-emerald-600'
+                        }`}
+                        title={dept.is_active ? 'Deactivate Department' : 'Activate Department'}
+                      >
+                        {dept.is_active ? <PowerOff className="w-4 h-4 text-rose-600" /> : <Power className="w-4 h-4 text-emerald-600" />}
                       </button>
                     </td>
                   </tr>
@@ -240,7 +278,7 @@ export default function Departments({ departments = { data: [] }, filters = {} }
           <EmptyState
             icon={Building2}
             title="No departments found"
-            description={search || statusFilter ? "No departments match your criteria." : "Click 'Add New Department' to register departments."}
+            description={search || statusFilter ? 'No departments match your criteria.' : "Click 'Add New Department' to register departments."}
           />
         )}
         <Pagination meta={meta} />
@@ -316,6 +354,20 @@ export default function Departments({ departments = { data: [] }, filters = {} }
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal for Activate/Deactivate */}
+      <ConfirmationModal
+        isOpen={toggleModalOpen}
+        onClose={() => setToggleModalOpen(false)}
+        onConfirm={handleConfirmToggle}
+        title={toggleDept?.is_active ? 'Deactivate Department' : 'Activate Department'}
+        description={`Are you sure you want to ${
+          toggleDept?.is_active ? 'deactivate' : 'activate'
+        } department ${toggleDept?.name} (${toggleDept?.code})?`}
+        confirmText={toggleDept?.is_active ? 'Deactivate' : 'Activate'}
+        cancelText="Cancel"
+        variant={toggleDept?.is_active ? 'danger' : 'success'}
+      />
     </AppShell>
   );
 }
