@@ -75,13 +75,13 @@ export default function AppShell({ children, title, breadcrumbs = [] }) {
                     name: "Stock Overview",
                     href: "/inventory/overview",
                     icon: Boxes,
-                    show: true,
+                    show: user?.role === "ADMIN",
                 },
                 {
                     name: "Stock History",
                     href: "/inventory/history",
                     icon: History,
-                    show: true,
+                    show: user?.role === "ADMIN",
                 },
             ],
         },
@@ -98,13 +98,19 @@ export default function AppShell({ children, title, breadcrumbs = [] }) {
                     name: "Stock Report",
                     href: "/reports/stock",
                     icon: FileBarChart,
-                    show: user?.role === "ADMIN" || user?.role === "APPROVER" || user?.role === "EXECUTIVE",
+                    show:
+                        user?.role === "ADMIN" ||
+                        user?.role === "APPROVER" ||
+                        user?.role === "EXECUTIVE",
                 },
                 {
                     name: "Approval Report",
                     href: "/reports/approvals",
                     icon: FileBarChart,
-                    show: user?.role === "ADMIN" || user?.role === "APPROVER" || user?.role === "EXECUTIVE",
+                    show:
+                        user?.role === "ADMIN" ||
+                        user?.role === "APPROVER" ||
+                        user?.role === "EXECUTIVE",
                 },
             ],
         },
@@ -380,11 +386,19 @@ export default function AppShell({ children, title, breadcrumbs = [] }) {
                         </div>
                     )}
 
-                    {(flash?.error || pageProps.errors?.error || pageProps.errors?.auth || pageProps.errors?.message) && (
+                    {(flash?.error ||
+                        pageProps.errors?.error ||
+                        pageProps.errors?.auth ||
+                        pageProps.errors?.message) && (
                         <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs font-semibold flex items-center justify-between shadow-xs">
                             <div className="flex items-center space-x-2">
                                 <span className="w-2 h-2 rounded-full bg-red-600 shrink-0" />
-                                <span>{flash?.error || pageProps.errors?.error || pageProps.errors?.auth || pageProps.errors?.message}</span>
+                                <span>
+                                    {flash?.error ||
+                                        pageProps.errors?.error ||
+                                        pageProps.errors?.auth ||
+                                        pageProps.errors?.message}
+                                </span>
                             </div>
                         </div>
                     )}
