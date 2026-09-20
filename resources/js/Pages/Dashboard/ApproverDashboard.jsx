@@ -2,104 +2,116 @@ import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import AppShell from '@/Layouts/AppShell';
 import StatusBadge from '@/Components/StatusBadge';
-import { ClipboardCheck, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import StatCard from '@/Components/StatCard';
+import EmptyState from '@/Components/EmptyState';
+import { ClipboardCheck, CheckCircle2, XCircle, Clock, ArrowRight, ShieldAlert } from 'lucide-react';
 
-export default function ApproverDashboard({ stats, pendingRequests }) {
+export default function ApproverDashboard({ stats = {}, pendingRequests = [] }) {
+  const breadcrumbs = [
+    { title: 'Executive Approver', href: null },
+    { title: 'Dashboard', href: null },
+  ];
+
   return (
-    <AppShell title="Approver Dashboard">
+    <AppShell title="Approver Dashboard" breadcrumbs={breadcrumbs}>
       <Head title="Executive / HoD Approval Dashboard - DMRS" />
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 bg-white p-6 rounded-lg border border-slate-200 shadow-xs">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Executive / HoD Approval Dashboard</h1>
-          <p className="text-xs text-slate-500 mt-1">Review pending Material Requisition Forms (MRF) assigned to your approval scope.</p>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Executive / HoD Approval Dashboard</h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Review pending Material Requisition Forms (MRF) assigned to your department approval scope.
+          </p>
         </div>
+        <Link
+          href="/approvals/inbox"
+          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs font-semibold shadow-xs transition-colors"
+        >
+          Open Approval Inbox
+        </Link>
       </div>
 
-      {/* Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center space-x-4">
-          <div className="p-3 bg-amber-50 text-amber-700 rounded-xl">
-            <Clock className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-slate-500">Pending Approval</div>
-            <div className="text-2xl font-bold text-amber-600 mt-0.5">{stats.pendingApproval}</div>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center space-x-4">
-          <div className="p-3 bg-emerald-50 text-emerald-700 rounded-xl">
-            <CheckCircle2 className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-slate-500">Approved By You</div>
-            <div className="text-2xl font-bold text-emerald-600 mt-0.5">{stats.approved}</div>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center space-x-4">
-          <div className="p-3 bg-rose-50 text-rose-700 rounded-xl">
-            <XCircle className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-slate-500">Rejected By You</div>
-            <div className="text-2xl font-bold text-rose-600 mt-0.5">{stats.rejected}</div>
-          </div>
-        </div>
+      {/* Metric Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <StatCard
+          title="Pending Approval Queue"
+          value={stats.pendingApproval || 0}
+          subtitle="Requires your review"
+          icon={Clock}
+          variant={stats.pendingApproval > 0 ? 'warning' : 'default'}
+        />
+        <StatCard
+          title="Approved By You"
+          value={stats.approved || 0}
+          subtitle="Requests authorized"
+          icon={CheckCircle2}
+          variant="success"
+        />
+        <StatCard
+          title="Rejected By You"
+          value={stats.rejected || 0}
+          subtitle="Requests declined"
+          icon={XCircle}
+          variant={stats.rejected > 0 ? 'danger' : 'default'}
+        />
       </div>
 
       {/* Pending Approval Inbox Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-slate-900">Approval Inbox (Action Required)</h2>
-          <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+      <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
+        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <ClipboardCheck className="w-4 h-4 text-red-600" />
+            <h2 className="text-sm font-bold text-slate-900">Urgent Approval Queue (Action Required)</h2>
+          </div>
+          <span className="text-xs font-bold text-orange-700 bg-orange-50 px-2.5 py-1 rounded-full border border-orange-200">
             {pendingRequests.length} Pending
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-600">
-            <thead className="bg-slate-50 text-slate-700 font-bold uppercase text-[10px] tracking-wider border-b border-slate-100">
-              <tr>
-                <th className="p-4">Request No</th>
-                <th className="p-4">Requester</th>
-                <th className="p-4">Department</th>
-                <th className="p-4">Items</th>
-                <th className="p-4">Date</th>
-                <th className="p-4 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {pendingRequests.length === 0 ? (
+        {pendingRequests && pendingRequests.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-600 border-b border-slate-200">
                 <tr>
-                  <td colSpan="6" className="p-8 text-center text-slate-400">
-                    Your approval inbox is clear. No pending requests.
-                  </td>
+                  <th className="px-4 py-3">Request No</th>
+                  <th className="px-4 py-3">Requester</th>
+                  <th className="px-4 py-3">Department</th>
+                  <th className="px-4 py-3">Items</th>
+                  <th className="px-4 py-3">Submitted Date</th>
+                  <th className="px-4 py-3 text-right">Action</th>
                 </tr>
-              ) : (
-                pendingRequests.map((req) => (
-                  <tr key={req.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="p-4 font-bold text-slate-900">{req.request_no}</td>
-                    <td className="p-4 font-semibold text-slate-800">{req.requester?.name}</td>
-                    <td className="p-4">{req.department?.name || '-'}</td>
-                    <td className="p-4 font-medium">{req.items?.length || 0} Material(s)</td>
-                    <td className="p-4">{req.request_date}</td>
-                    <td className="p-4 text-right">
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {pendingRequests.map((req) => (
+                  <tr key={req.id} className="hover:bg-red-50/20 transition-colors">
+                    <td className="px-4 py-3 font-bold text-red-700">{req.request_no}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900">{req.requester?.name || '-'}</td>
+                    <td className="px-4 py-3">{req.department?.name || '-'}</td>
+                    <td className="px-4 py-3 font-semibold text-slate-800">{req.items?.length || 0} Material(s)</td>
+                    <td className="px-4 py-3 text-slate-600">{req.request_date}</td>
+                    <td className="px-4 py-3 text-right">
                       <Link
                         href={`/requests/${req.id}`}
-                        className="px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg font-semibold text-xs transition-colors shadow-xs"
+                        className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md font-semibold text-xs transition-colors shadow-xs"
                       >
-                        Review & Approve
+                        Review & Decision
                       </Link>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            icon={CheckCircle2}
+            title="Approval inbox is clear"
+            description="All material requisitions assigned to your approval scope have been reviewed."
+          />
+        )}
       </div>
     </AppShell>
   );
 }
+
