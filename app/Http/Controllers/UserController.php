@@ -17,9 +17,33 @@ class UserController extends Controller
 {
     public function index(Request $request): Response
     {
-        $users = User::with(['role', 'department', 'plant', 'approver'])
-            ->orderBy('id', 'desc')
-            ->paginate(15);
+        $this->authorize('viewAny', User::class);
+
+        $query = User::with(['role', 'department', 'plant', 'approver']);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'LIKE', "%{$search}%")
+                    ->orWhere('username', 'LIKE', "%{$search}%")
+                    ->orWhere('email', 'LIKE', "%{$search}%")
+                    ->orWhere('employee_id', 'LIKE', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('role_id')) {
+            $query->where('role_id', $request->role_id);
+        }
+
+        if ($request->filled('department_id')) {
+            $query->where('department_id', $request->department_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $users = $query->orderBy('id', 'desc')->paginate(15)->withQueryString();
 
         $roles = Role::where('is_active', true)->get();
         $departments = Department::where('is_active', true)->get();
@@ -32,11 +56,13 @@ class UserController extends Controller
             'departments' => $departments,
             'plants' => $plants,
             'approvers' => $approvers,
+            'filters' => $request->only(['search', 'role_id', 'department_id', 'status']),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
+        $this->authorize('create', User::class);
         $validated = $request->validate([
             'employee_id' => ['required', 'string', 'unique:users,employee_id'],
             'username' => ['required', 'string', 'unique:users,username'],
@@ -70,6 +96,8 @@ class UserController extends Controller
 
     public function update(User $user, Request $request): RedirectResponse
     {
+        $this->authorize('update', $user);
+
         $validated = $request->validate([
             'name' => ['required', 'string'],
             'email' => ['required', 'email', "unique:users,email,{$user->id}"],

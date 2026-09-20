@@ -2,6 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\MaterialRequestStatus;
+use App\Models\MaterialRequest;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -37,6 +40,30 @@ class HandleInertiaRequests extends Middleware
     {
         $user = $request->user();
 
+        $pendingApprovalsCount = 0;
+        $unreadNotificationsCount = 0;
+
+        if ($user) {
+            $unreadNotificationsCount = Notification::where('user_id', $user->id)
+                ->where('is_read', false)
+                ->count();
+
+            if ($user->isAdmin()) {
+                $pendingApprovalsCount = MaterialRequest::whereIn('status', [
+                    MaterialRequestStatus::SUBMITTED,
+                    MaterialRequestStatus::PENDING_APPROVAL,
+                ])->count();
+            } elseif ($user->isApprover()) {
+                $pendingApprovalsCount = MaterialRequest::whereIn('status', [
+                    MaterialRequestStatus::SUBMITTED,
+                    MaterialRequestStatus::PENDING_APPROVAL,
+                ])->where(function ($q) use ($user) {
+                    $q->where('approver_id', $user->id)
+                        ->orWhere('department_id', $user->department_id);
+                })->count();
+            }
+        }
+
         return [
             ...parent::share($request),
             'auth' => [
@@ -57,9 +84,13 @@ class HandleInertiaRequests extends Middleware
                     ] : null,
                 ] : null,
             ],
+            'pendingApprovalsCount' => $pendingApprovalsCount,
+            'unreadNotificationsCount' => $unreadNotificationsCount,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+                'warning' => fn () => $request->session()->get('warning'),
+                'info' => fn () => $request->session()->get('info'),
             ],
         ];
     }
