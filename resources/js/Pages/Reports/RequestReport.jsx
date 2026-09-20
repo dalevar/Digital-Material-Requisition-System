@@ -38,17 +38,25 @@ export default function RequestReport({ requests, filters }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {requests.data.map((req) => (
-                <tr key={req.id} className="hover:bg-slate-50/80">
-                  <td className="p-4 font-bold text-slate-900">{req.request_no}</td>
-                  <td className="p-4 text-slate-500">{req.no_doc || '-'}</td>
-                  <td className="p-4 font-semibold text-slate-800">{req.requester?.name}</td>
-                  <td className="p-4">{req.department?.name || '-'}</td>
-                  <td className="p-4">{req.request_date}</td>
-                  <td className="p-4">{req.approver?.name || '-'}</td>
-                  <td className="p-4"><StatusBadge status={req.status} /></td>
+              {requests.data.length > 0 ? (
+                requests.data.map((req) => (
+                  <tr key={req.id} className="hover:bg-slate-50/80">
+                    <td className="p-4 font-bold text-slate-900">{req.request_no}</td>
+                    <td className="p-4 text-slate-500">{req.no_doc || '-'}</td>
+                    <td className="p-4 font-semibold text-slate-800">{req.requester?.name}</td>
+                    <td className="p-4">{req.department?.name || '-'}</td>
+                    <td className="p-4">{req.request_date}</td>
+                    <td className="p-4">{req.approver?.name || '-'}</td>
+                    <td className="p-4"><StatusBadge status={req.status} /></td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" className="p-8 text-center text-slate-400 font-medium">
+                    No material request report records found.
+                  </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
