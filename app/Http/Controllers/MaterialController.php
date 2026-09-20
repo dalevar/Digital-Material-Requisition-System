@@ -16,10 +16,29 @@ class MaterialController extends Controller
 {
     public function index(Request $request): Response
     {
-        $materials = Material::with(['category', 'plant', 'stockBalance'])
-            ->orderBy('id', 'desc')
-            ->paginate(15);
+        $query = Material::with(['category', 'plant', 'stockBalance']);
 
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('material_number', 'LIKE', "%{$search}%")
+                    ->orWhere('description', 'LIKE', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        if ($request->filled('plant_id')) {
+            $query->where('plant_id', $request->plant_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $materials = $query->orderBy('id', 'desc')->paginate(15)->withQueryString();
         $categories = MaterialCategory::where('is_active', true)->get();
         $plants = Plant::where('is_active', true)->get();
 
@@ -27,11 +46,14 @@ class MaterialController extends Controller
             'materials' => $materials,
             'categories' => $categories,
             'plants' => $plants,
+            'filters' => $request->only(['search', 'category_id', 'plant_id', 'status']),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
+        $this->authorize('create', Material::class);
+
         $validated = $request->validate([
             'material_number' => ['required', 'string', 'unique:materials,material_number'],
             'description' => ['required', 'string'],
@@ -71,6 +93,8 @@ class MaterialController extends Controller
 
     public function update(Material $material, Request $request): RedirectResponse
     {
+        $this->authorize('update', $material);
+
         $validated = $request->validate([
             'description' => ['required', 'string'],
             'category_id' => ['required', 'exists:material_categories,id'],
