@@ -252,7 +252,8 @@ class AdminInventoryRevisionTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->requester)
-            ->post("/admin/requests/{$mr->id}/issue-stock");
+            ->withSession(['_token' => 'test-csrf-token'])
+            ->post("/admin/requests/{$mr->id}/issue-stock", ['_token' => 'test-csrf-token']);
 
         $response->assertStatus(403);
     }
