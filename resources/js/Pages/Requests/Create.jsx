@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import AppShell from '@/Layouts/AppShell';
-import { Plus, Trash2, Save, Send, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, Save, Send, ArrowLeft, Info } from 'lucide-react';
 
-export default function Create({ materials, approvers, departments, plants }) {
+export default function Create({ materials = [], approvers = [], departments = [], plants = [] }) {
+  const breadcrumbs = [
+    { title: 'Material Requests', href: '/requests' },
+    { title: 'New Requisition', href: null },
+  ];
+
   const { data, setData, post, processing, errors } = useForm({
     no_doc: '',
     request_date: new Date().toISOString().split('T')[0],
@@ -84,52 +89,61 @@ export default function Create({ materials, approvers, departments, plants }) {
   };
 
   return (
-    <AppShell title="Create New Material Requisition">
+    <AppShell title="Create Material Requisition" breadcrumbs={breadcrumbs}>
       <Head title="Create New Request - DMRS" />
 
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <Link href="/requests" className="inline-flex items-center text-xs font-semibold text-slate-500 hover:text-blue-700 mb-2">
-            <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back to Requests
+          <Link href="/requests" className="inline-flex items-center text-xs font-semibold text-slate-500 hover:text-red-600 mb-1 transition-colors">
+            <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back to Requisitions List
           </Link>
-          <h1 className="text-xl font-bold text-slate-900">New Material Requisition Form (MRF)</h1>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">New Material Requisition Form (MRF)</h1>
+          <p className="text-xs text-slate-500">Fill in header information and add requested material items.</p>
         </div>
       </div>
 
       <form className="space-y-6">
         {/* Header Metadata Section */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">MRF Header Information</h2>
+        <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-xs space-y-4">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2">
+            1. MRF Header & Routing Information
+          </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Request Date *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Request Date <span className="text-red-600">*</span>
+              </label>
               <input
                 type="date"
                 value={data.request_date}
                 onChange={(e) => setData('request_date', e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/20"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Document Reference No (Optional Archive No)</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Document Archive No (Manual Doc No)
+              </label>
               <input
                 type="text"
                 value={data.no_doc}
                 onChange={(e) => setData('no_doc', e.target.value)}
                 placeholder="e.g. DOC-REF-2026-001"
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/20"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Designated Approver (Executive / HoD) *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Designated Approver (Executive / HoD) <span className="text-red-600">*</span>
+              </label>
               <select
                 value={data.approver_id}
                 onChange={(e) => setData('approver_id', e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/20"
                 required
               >
                 <option value="">Select Approver...</option>
@@ -139,7 +153,7 @@ export default function Create({ materials, approvers, departments, plants }) {
                   </option>
                 ))}
               </select>
-              {errors.approver_id && <p className="text-xs text-rose-600 mt-1">{errors.approver_id}</p>}
+              {errors.approver_id && <p className="text-xs text-red-600 mt-1 font-medium">{errors.approver_id}</p>}
             </div>
 
             <div>
@@ -147,7 +161,7 @@ export default function Create({ materials, approvers, departments, plants }) {
               <select
                 value={data.department_id}
                 onChange={(e) => setData('department_id', e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/20"
               >
                 <option value="">Select Department...</option>
                 {departments.map((d) => (
@@ -161,7 +175,7 @@ export default function Create({ materials, approvers, departments, plants }) {
               <select
                 value={data.plant_id}
                 onChange={(e) => setData('plant_id', e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/20"
               >
                 <option value="">Select Plant...</option>
                 {plants.map((p) => (
@@ -177,7 +191,7 @@ export default function Create({ materials, approvers, departments, plants }) {
                 value={data.gl_account}
                 onChange={(e) => setData('gl_account', e.target.value)}
                 placeholder="e.g. 500120"
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/20"
               />
             </div>
 
@@ -188,7 +202,7 @@ export default function Create({ materials, approvers, departments, plants }) {
                 value={data.pwo_no}
                 onChange={(e) => setData('pwo_no', e.target.value)}
                 placeholder="e.g. PWO-9941"
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/20"
               />
             </div>
 
@@ -200,14 +214,14 @@ export default function Create({ materials, approvers, departments, plants }) {
                   value={data.pur_org}
                   onChange={(e) => setData('pur_org', e.target.value)}
                   placeholder="Pur Org"
-                  className="w-1/2 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-1/2 px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/20"
                 />
                 <input
                   type="text"
                   value={data.pur_group}
                   onChange={(e) => setData('pur_group', e.target.value)}
                   placeholder="Pur Group"
-                  className="w-1/2 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-1/2 px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/20"
                 />
               </div>
             </div>
@@ -219,7 +233,7 @@ export default function Create({ materials, approvers, departments, plants }) {
                 value={data.cost_center}
                 onChange={(e) => setData('cost_center', e.target.value)}
                 placeholder="e.g. CC-304"
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/20"
               />
             </div>
           </div>
@@ -231,19 +245,21 @@ export default function Create({ materials, approvers, departments, plants }) {
               value={data.reason}
               onChange={(e) => setData('reason', e.target.value)}
               placeholder="Provide reason or operational purpose..."
-              className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/20"
             />
           </div>
         </div>
 
         {/* Dynamic Material Items Table */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Material Items</h2>
+        <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden p-6 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              2. Requested Material Items List
+            </h2>
             <button
               type="button"
               onClick={addItemRow}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold transition-colors"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-md text-xs font-semibold transition-colors border border-red-200"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Material Item</span>
@@ -251,28 +267,28 @@ export default function Create({ materials, approvers, departments, plants }) {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
-              <thead className="bg-slate-50 text-slate-700 font-bold uppercase text-[10px] tracking-wider border-b border-slate-100">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-600 border-b border-slate-200">
                 <tr>
-                  <th className="p-3 style-width: 5%">No</th>
-                  <th className="p-3 style-width: 30%">Material *</th>
-                  <th className="p-3 text-right style-width: 12%">SOH</th>
-                  <th className="p-3 text-right style-width: 12%">Request Qty *</th>
-                  <th className="p-3 text-center style-width: 8%">UoM</th>
-                  <th className="p-3 text-right style-width: 12%">Est. Balance</th>
-                  <th className="p-3 style-width: 16%">Notes</th>
-                  <th className="p-3 text-center style-width: 5%">Action</th>
+                  <th className="px-3 py-2.5 text-center w-10">No</th>
+                  <th className="px-3 py-2.5">Material <span className="text-red-600">*</span></th>
+                  <th className="px-3 py-2.5 text-right w-24">SOH</th>
+                  <th className="px-3 py-2.5 text-right w-32">Req Qty <span className="text-red-600">*</span></th>
+                  <th className="px-3 py-2.5 text-center w-20">UoM</th>
+                  <th className="px-3 py-2.5 text-right w-28">Est. Balance</th>
+                  <th className="px-3 py-2.5">Notes</th>
+                  <th className="px-3 py-2.5 text-center w-12">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-200">
                 {data.items.map((item, index) => (
-                  <tr key={index} className="hover:bg-slate-50/50">
-                    <td className="p-3 text-center font-bold text-slate-500">{index + 1}</td>
-                    <td className="p-3">
+                  <tr key={index} className="hover:bg-slate-50/60">
+                    <td className="px-3 py-2.5 text-center font-bold text-slate-400">{index + 1}</td>
+                    <td className="px-3 py-2.5">
                       <select
                         value={item.material_id}
                         onChange={(e) => handleMaterialChange(index, e.target.value)}
-                        className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-500"
                         required
                       >
                         <option value="">Select Material...</option>
@@ -283,37 +299,38 @@ export default function Create({ materials, approvers, departments, plants }) {
                         ))}
                       </select>
                     </td>
-                    <td className="p-3 text-right font-semibold text-slate-700">{item.soh.toFixed(2)}</td>
-                    <td className="p-3 text-right">
+                    <td className="px-3 py-2.5 text-right font-mono font-semibold text-slate-700">{item.soh.toFixed(2)}</td>
+                    <td className="px-3 py-2.5 text-right">
                       <input
                         type="number"
                         step="0.01"
                         min="0.01"
                         value={item.qty}
                         onChange={(e) => handleQtyChange(index, e.target.value)}
-                        className="w-24 text-right px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 font-bold text-slate-900"
+                        className="w-28 text-right px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-500 font-mono font-bold text-slate-900"
                         required
                       />
                     </td>
-                    <td className="p-3 text-center font-semibold text-slate-500">{item.uom || '-'}</td>
-                    <td className={`p-3 text-right font-bold ${item.balance < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                    <td className="px-3 py-2.5 text-center font-semibold text-slate-500">{item.uom || '-'}</td>
+                    <td className={`px-3 py-2.5 text-right font-mono font-bold ${item.balance < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                       {item.balance.toFixed(2)}
                     </td>
-                    <td className="p-3">
+                    <td className="px-3 py-2.5">
                       <input
                         type="text"
                         value={item.note}
                         onChange={(e) => handleItemNoteChange(index, e.target.value)}
                         placeholder="Item note..."
-                        className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-500"
                       />
                     </td>
-                    <td className="p-3 text-center">
+                    <td className="px-3 py-2.5 text-center">
                       <button
                         type="button"
                         onClick={() => removeItemRow(index)}
                         disabled={data.items.length === 1}
-                        className="p-1 text-slate-400 hover:text-rose-600 disabled:opacity-30 transition-colors"
+                        className="p-1 text-slate-400 hover:text-red-600 disabled:opacity-30 transition-colors"
+                        title="Remove item"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -325,29 +342,37 @@ export default function Create({ materials, approvers, departments, plants }) {
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end space-x-3 pt-4">
-          <button
-            type="button"
-            onClick={() => handleSubmit('draft')}
-            disabled={processing}
-            className="inline-flex items-center space-x-2 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl shadow-xs transition-all disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            <span>Save as Draft</span>
-          </button>
+        {/* Action Controls */}
+        <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center space-x-2 text-xs text-slate-500">
+            <Info className="w-4 h-4 text-red-600" />
+            <span>Estimated Balance is automatically computed: <code>Balance = SOH - Requested Qty</code>.</span>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => handleSubmit('submit')}
-            disabled={processing}
-            className="inline-flex items-center space-x-2 px-5 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-semibold text-xs rounded-xl shadow-xs transition-all disabled:opacity-50"
-          >
-            <Send className="w-4 h-4" />
-            <span>Submit for Approval</span>
-          </button>
+          <div className="flex items-center space-x-3">
+            <button
+              type="button"
+              onClick={() => handleSubmit('draft')}
+              disabled={processing}
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-md shadow-xs transition-all disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              <span>Save as Draft</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSubmit('submit')}
+              disabled={processing}
+              className="inline-flex items-center space-x-2 px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs rounded-md shadow-xs transition-all disabled:opacity-50"
+            >
+              <Send className="w-4 h-4" />
+              <span>Submit Requisition</span>
+            </button>
+          </div>
         </div>
       </form>
     </AppShell>
   );
 }
+

@@ -2,131 +2,316 @@ import React, { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppShell from '@/Layouts/AppShell';
 import StatusBadge from '@/Components/StatusBadge';
-import { PlusCircle, Search, Filter, FileText, Download } from 'lucide-react';
+import EmptyState from '@/Components/EmptyState';
+import { PlusCircle, Search, Filter, FileText, Download, FilePlus, X } from 'lucide-react';
 
-export default function Index({ requests, filters }) {
+export default function Index({
+  requests = { data: [] },
+  filters = {},
+  departments = [],
+  plants = [],
+  approvers = [],
+}) {
+  const breadcrumbs = [
+    { title: 'Material Requests', href: null },
+  ];
+
   const [search, setSearch] = useState(filters.search || '');
   const [status, setStatus] = useState(filters.status || '');
+  const [departmentId, setDepartmentId] = useState(filters.department_id || '');
+  const [plantId, setPlantId] = useState(filters.plant_id || '');
+  const [approverId, setApproverId] = useState(filters.approver_id || '');
+  const [noDoc, setNoDoc] = useState(filters.no_doc || '');
+  const [dateFrom, setDateFrom] = useState(filters.date_from || '');
+  const [dateTo, setDateTo] = useState(filters.date_to || '');
+  const [showAdvanced, setShowAdvanced] = useState(
+    Boolean(filters.department_id || filters.plant_id || filters.approver_id || filters.no_doc || filters.date_from || filters.date_to)
+  );
 
   const handleFilter = (e) => {
-    e.preventDefault();
-    router.get('/requests', { search, status }, { preserveState: true });
+    if (e) e.preventDefault();
+    router.get(
+      '/requests',
+      {
+        search: search || undefined,
+        status: status || undefined,
+        department_id: departmentId || undefined,
+        plant_id: plantId || undefined,
+        approver_id: approverId || undefined,
+        no_doc: noDoc || undefined,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
+      },
+      { preserveState: true }
+    );
   };
 
+  const handleClearFilters = () => {
+    setSearch('');
+    setStatus('');
+    setDepartmentId('');
+    setPlantId('');
+    setApproverId('');
+    setNoDoc('');
+    setDateFrom('');
+    setDateTo('');
+    router.get('/requests', {}, { preserveState: true });
+  };
+
+  const statusOptions = [
+    { label: 'All Statuses', value: '' },
+    { label: 'Draft', value: 'DRAFT' },
+    { label: 'Submitted', value: 'SUBMITTED' },
+    { label: 'Pending Approval', value: 'PENDING_APPROVAL' },
+    { label: 'Approved', value: 'APPROVED' },
+    { label: 'Rejected', value: 'REJECTED' },
+    { label: 'Processing', value: 'PROCESSING' },
+    { label: 'Completed', value: 'COMPLETED' },
+    { label: 'Cancelled (Post-Approval)', value: 'CANCELLED_AFTER_APPROVAL' },
+  ];
+
+  const activeAdvancedCount = [departmentId, plantId, approverId, noDoc, dateFrom, dateTo].filter(Boolean).length;
+
   return (
-    <AppShell title="Material Requisitions">
+    <AppShell title="Material Requisitions" breadcrumbs={breadcrumbs}>
       <Head title="Material Requisitions - DMRS" />
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Material Requisitions</h1>
-          <p className="text-xs text-slate-500 mt-1">Browse, filter, and manage all material requisition forms.</p>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Material Requisition Forms (MRF)</h1>
+          <p className="text-xs text-slate-500">Browse, filter, track status, and manage material requisitions.</p>
         </div>
         <Link
           href="/requests/create"
-          className="inline-flex items-center space-x-2 px-4 py-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-semibold shadow-xs transition-all"
+          className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs font-semibold shadow-xs transition-colors shrink-0"
         >
           <PlusCircle className="w-4 h-4" />
           <span>New Requisition</span>
         </Link>
       </div>
 
-      {/* Filter Bar */}
-      <form onSubmit={handleFilter} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs mb-6 flex flex-wrap gap-3 items-center justify-between">
-        <div className="flex flex-wrap gap-3 items-center flex-1">
-          <div className="relative min-w-[240px]">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search Request No, Doc No, Requester..."
-              className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+      {/* Quick Status Filter Tabs */}
+      <div className="flex items-center space-x-1 overflow-x-auto pb-2 mb-4 scrollbar-none">
+        {statusOptions.map((opt) => {
+          const isActive = status === opt.value;
+          return (
+            <button
+              key={opt.value}
+              onClick={() => {
+                setStatus(opt.value);
+                router.get(
+                  '/requests',
+                  {
+                    ...(search ? { search } : {}),
+                    ...(opt.value ? { status: opt.value } : {}),
+                    ...(departmentId ? { department_id: departmentId } : {}),
+                    ...(plantId ? { plant_id: plantId } : {}),
+                    ...(approverId ? { approver_id: approverId } : {}),
+                    ...(noDoc ? { no_doc: noDoc } : {}),
+                    ...(dateFrom ? { date_from: dateFrom } : {}),
+                    ...(dateTo ? { date_to: dateTo } : {}),
+                  },
+                  { preserveState: true }
+                );
+              }}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-colors ${
+                isActive
+                  ? 'bg-red-600 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Filter Toolbar */}
+      <form onSubmit={handleFilter} className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs mb-6 space-y-3">
+        <div className="flex flex-wrap gap-3 items-center justify-between">
+          <div className="flex flex-wrap gap-3 items-center flex-1">
+            <div className="relative min-w-[260px] flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search Request No, Doc Reference, Requester, Material..."
+                className="w-full pl-9 pr-4 py-2 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-md transition-colors flex items-center space-x-1.5 shadow-xs"
+            >
+              <Filter className="w-3.5 h-3.5" />
+              <span>Search</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className={`px-3.5 py-2 border rounded-md text-xs font-semibold transition-colors flex items-center space-x-1.5 ${
+                showAdvanced || activeAdvancedCount > 0
+                  ? 'bg-red-50 border-red-300 text-red-700'
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <Filter className="w-3.5 h-3.5" />
+              <span>Filters{activeAdvancedCount > 0 ? ` (${activeAdvancedCount})` : ''}</span>
+            </button>
+
+            {(search || status || activeAdvancedCount > 0) && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs rounded-md transition-colors flex items-center space-x-1"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
           </div>
-
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">All Statuses</option>
-            <option value="DRAFT">Draft</option>
-            <option value="SUBMITTED">Submitted</option>
-            <option value="PENDING_APPROVAL">Pending Approval</option>
-            <option value="APPROVED">Approved</option>
-            <option value="REJECTED">Rejected</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="CANCELLED_AFTER_APPROVAL">Cancelled (Post-Approval)</option>
-          </select>
-
-          <button
-            type="submit"
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg transition-colors flex items-center space-x-1.5"
-          >
-            <Filter className="w-3.5 h-3.5" />
-            <span>Apply Filters</span>
-          </button>
         </div>
+
+        {/* Advanced Filters Panel */}
+        {showAdvanced && (
+          <div className="pt-3 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Department</label>
+              <select
+                value={departmentId}
+                onChange={(e) => setDepartmentId(e.target.value)}
+                className="w-full text-xs border border-slate-200 rounded-md py-1.5 px-2.5 focus:outline-none focus:ring-2 focus:ring-red-500"
+              >
+                <option value="">All Departments</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Plant</label>
+              <select
+                value={plantId}
+                onChange={(e) => setPlantId(e.target.value)}
+                className="w-full text-xs border border-slate-200 rounded-md py-1.5 px-2.5 focus:outline-none focus:ring-2 focus:ring-red-500"
+              >
+                <option value="">All Plants</option>
+                {plants.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Assigned Approver</label>
+              <select
+                value={approverId}
+                onChange={(e) => setApproverId(e.target.value)}
+                className="w-full text-xs border border-slate-200 rounded-md py-1.5 px-2.5 focus:outline-none focus:ring-2 focus:ring-red-500"
+              >
+                <option value="">All Approvers</option>
+                {approvers.map((a) => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Document No</label>
+              <input
+                type="text"
+                value={noDoc}
+                onChange={(e) => setNoDoc(e.target.value)}
+                placeholder="Doc reference no..."
+                className="w-full text-xs border border-slate-200 rounded-md py-1.5 px-2.5 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Date From</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-full text-xs border border-slate-200 rounded-md py-1.5 px-2.5 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Date To</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-full text-xs border border-slate-200 rounded-md py-1.5 px-2.5 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+          </div>
+        )}
       </form>
 
-      {/* Requests Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-600">
-            <thead className="bg-slate-50 text-slate-700 font-bold uppercase text-[10px] tracking-wider border-b border-slate-100">
-              <tr>
-                <th className="p-4">Request No</th>
-                <th className="p-4">Doc Reference</th>
-                <th className="p-4">Requester</th>
-                <th className="p-4">Department</th>
-                <th className="p-4">Date</th>
-                <th className="p-4">Status</th>
-                <th className="p-4 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {requests.data.length === 0 ? (
+      {/* Requests Data Table */}
+      <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
+        {requests.data && requests.data.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-600 border-b border-slate-200">
                 <tr>
-                  <td colSpan="7" className="p-8 text-center text-slate-400">
-                    No material requests found matching your filter criteria.
-                  </td>
+                  <th className="px-4 py-3">Request No</th>
+                  <th className="px-4 py-3">Doc Reference</th>
+                  <th className="px-4 py-3">Requester</th>
+                  <th className="px-4 py-3">Department</th>
+                  <th className="px-4 py-3">Date</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-right">Action</th>
                 </tr>
-              ) : (
-                requests.data.map((req) => (
-                  <tr key={req.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="p-4 font-bold text-slate-900">{req.request_no}</td>
-                    <td className="p-4 font-medium text-slate-500">{req.no_doc || '-'}</td>
-                    <td className="p-4 font-semibold text-slate-800">{req.requester?.name}</td>
-                    <td className="p-4">{req.department?.name || '-'}</td>
-                    <td className="p-4">{req.request_date}</td>
-                    <td className="p-4">
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {requests.data.map((req) => (
+                  <tr key={req.id} className="hover:bg-red-50/20 transition-colors">
+                    <td className="px-4 py-3 font-bold text-red-700">{req.request_no}</td>
+                    <td className="px-4 py-3 font-medium text-slate-500">{req.no_doc || '-'}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900">{req.requester?.name || '-'}</td>
+                    <td className="px-4 py-3">{req.department?.name || '-'}</td>
+                    <td className="px-4 py-3 text-slate-600">{req.request_date}</td>
+                    <td className="px-4 py-3">
                       <StatusBadge status={req.status} />
                     </td>
-                    <td className="p-4 text-right space-x-2">
+                    <td className="px-4 py-3 text-right space-x-2">
                       <a
                         href={`/requests/${req.id}/pdf`}
                         target="_blank"
                         rel="noreferrer"
-                        className="p-1.5 inline-flex items-center text-slate-500 hover:text-blue-700 hover:bg-slate-100 rounded-lg transition-colors"
+                        className="p-1.5 inline-flex items-center text-slate-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
                         title="Download Official PDF MRF"
                       >
                         <Download className="w-4 h-4" />
                       </a>
                       <Link
                         href={`/requests/${req.id}`}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold text-xs transition-colors"
+                        className="px-3 py-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-md font-semibold text-xs transition-colors"
                       >
                         View
                       </Link>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            icon={FilePlus}
+            title="No material requisitions found"
+            description="No requests match your selected search or status filters."
+          />
+        )}
       </div>
     </AppShell>
   );
 }
+

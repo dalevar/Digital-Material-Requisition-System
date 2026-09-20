@@ -33,8 +33,32 @@ class MaterialRequestController extends Controller
             }
         }
 
-        if ($request->filled('status')) {
+        if ($request->filled('status') && $request->status !== '') {
             $query->where('status', $request->status);
+        }
+
+        if ($request->filled('department_id')) {
+            $query->where('department_id', $request->department_id);
+        }
+
+        if ($request->filled('plant_id')) {
+            $query->where('plant_id', $request->plant_id);
+        }
+
+        if ($request->filled('approver_id')) {
+            $query->where('approver_id', $request->approver_id);
+        }
+
+        if ($request->filled('no_doc')) {
+            $query->where('no_doc', 'LIKE', "%{$request->no_doc}%");
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('request_date', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('request_date', '<=', $request->date_to);
         }
 
         if ($request->filled('search')) {
@@ -42,15 +66,25 @@ class MaterialRequestController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('request_no', 'LIKE', "%{$search}%")
                     ->orWhere('no_doc', 'LIKE', "%{$search}%")
-                    ->orWhereHas('requester', fn ($rq) => $rq->where('name', 'LIKE', "%{$search}%"));
+                    ->orWhereHas('requester', fn ($rq) => $rq->where('name', 'LIKE', "%{$search}%"))
+                    ->orWhereHas('items.material', fn ($mq) => $mq->where('material_number', 'LIKE', "%{$search}%")->orWhere('description', 'LIKE', "%{$search}%"));
             });
         }
 
         $requests = $query->orderBy('id', 'desc')->paginate(15)->withQueryString();
 
+        $departments = Department::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $plants = Plant::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $approvers = User::whereHas('role', fn ($r) => $r->whereIn('name', ['APPROVER', 'EXECUTIVE']))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         return Inertia::render('Requests/Index', [
             'requests' => $requests,
-            'filters' => $request->only(['status', 'search']),
+            'departments' => $departments,
+            'plants' => $plants,
+            'approvers' => $approvers,
+            'filters' => $request->only(['status', 'search', 'department_id', 'plant_id', 'approver_id', 'no_doc', 'date_from', 'date_to']),
         ]);
     }
 
