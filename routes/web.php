@@ -16,6 +16,11 @@ use App\Http\Controllers\StockController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
+// System Health Check Endpoint for Render / Load Balancers
+Route::get('/health', function () {
+    return response()->json(['status' => 'ok']);
+});
+
 // Redirect root to dashboard or login
 Route::get('/', function () {
     return auth()->check() ? redirect('/dashboard') : redirect('/login');
