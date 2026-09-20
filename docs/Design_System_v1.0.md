@@ -1,12 +1,8 @@
-# DMRS — Design System
+# DMRS — Design System (v1.0 DEPRECATED)
 ## Digital Material Requisition System
 
-> **Project:** Digital Material Requisition System (DMRS)  
-> **Company:** PT. Guthrie International Pulau Laut Refinery  
-> **Platform:** Web Application  
-> **Design System Version:** 1.0  
-> **Source:** PRD DMRS v1.5 supplied for development  
-> **Frontend target:** Laravel Blade + Tailwind CSS/Bootstrap-compatible utilities + JavaScript
+> **NOTICE:** This version 1.0 document is **DEPRECATED & SUPERSEDED BY Design System v2.0** (`docs/design_system_v2.md`).  
+> **Official Visual Source of Truth:** `docs/design_system_v2.md` (SD Guthrie Red `#D9232D`, Accent Orange `#EA580C`, Industrial Dark Charcoal `#0F172A`).
 
 ---
 
