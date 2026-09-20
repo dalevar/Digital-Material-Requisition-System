@@ -17,7 +17,7 @@ FROM composer:2 AS vendor
 WORKDIR /app
 
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --prefer-dist --optimize-autoloader
+RUN composer install --no-dev --no-scripts --prefer-dist --optimize-autoloader --ignore-platform-reqs
 
 # ==========================================
 # Stage 3: Production Runtime (PHP-FPM + Nginx)
