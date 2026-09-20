@@ -49,6 +49,8 @@ class StockController extends Controller
 
     public function stockIn(Request $request, InventoryService $service): RedirectResponse
     {
+        $this->authorize('stockIn', StockTransaction::class);
+
         $validated = $request->validate([
             'material_id' => ['required', 'exists:materials,id'],
             'qty' => ['required', 'numeric', 'gt:0'],
@@ -73,6 +75,8 @@ class StockController extends Controller
 
     public function stockAdjustment(Request $request, InventoryService $service): RedirectResponse
     {
+        $this->authorize('stockAdjustment', StockTransaction::class);
+
         $validated = $request->validate([
             'material_id' => ['required', 'exists:materials,id'],
             'target_qty' => ['required', 'numeric', 'gte:0'],
@@ -91,6 +95,7 @@ class StockController extends Controller
 
     public function issueStockForRequest(MaterialRequest $materialRequest, Request $request, InventoryService $service): RedirectResponse
     {
+        $this->authorize('issueStock', StockTransaction::class);
         if ($materialRequest->status !== MaterialRequestStatus::APPROVED && $materialRequest->status !== MaterialRequestStatus::PROCESSING) {
             return back()->withErrors(['error' => 'Stock can only be issued for APPROVED or PROCESSING requests.']);
         }
