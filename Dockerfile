@@ -22,7 +22,7 @@ RUN composer install --no-dev --no-scripts --prefer-dist --optimize-autoloader -
 # ==========================================
 # Stage 3: Production Runtime (PHP-FPM + Nginx)
 # ==========================================
-FROM php:8.3-fpm-alpine AS runtime
+FROM php:8.4-fpm-alpine AS runtime
 
 # Install system runtime dependencies and build tools for PHP extensions
 RUN apk add --no-cache \
@@ -37,6 +37,8 @@ RUN apk add --no-cache \
     freetype-dev \
     libzip \
     libzip-dev \
+    icu-libs \
+    icu-data-full \
     icu-dev \
     libxml2-dev \
     oniguruma-dev \
