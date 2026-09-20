@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ForgotPasswordRequest;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\ResetPasswordRequest;
 use App\Services\AuthenticationService;
@@ -49,18 +48,6 @@ class AuthController extends Controller
         $this->sessionService->revokeCurrentSession($request);
 
         return redirect('/login');
-    }
-
-    public function showForgotPassword()
-    {
-        return inertia('Auth/ForgotPassword');
-    }
-
-    public function sendResetLink(ForgotPasswordRequest $request): RedirectResponse
-    {
-        $message = $this->passwordResetService->sendResetLink($request->validated('email'));
-
-        return back()->with('status', $message);
     }
 
     public function showResetPassword(Request $request)
