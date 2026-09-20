@@ -66,7 +66,7 @@ export default function AuditTrail({ logs, filters }) {
                   <td className="p-4 font-medium text-slate-500">{log.created_at}</td>
                   <td className="p-4">
                     <div className="font-bold text-slate-900">{log.user?.name || 'System'}</div>
-                    <div className="text-[11px] text-blue-600 font-semibold">{log.role || '-'}</div>
+                    <div className="text-[11px] text-red-600 font-semibold">{log.role || '-'}</div>
                   </td>
                   <td className="p-4">
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">

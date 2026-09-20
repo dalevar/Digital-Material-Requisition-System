@@ -98,9 +98,107 @@ class ReportController extends Controller
         $writer = new Xlsx($spreadsheet);
         $fileName = 'DMRS_Material_Requests_'.date('Ymd_His').'.xlsx';
 
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment; filename="'.urlencode($fileName).'"');
-        $writer->save('php://output');
-        exit;
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    public function approvalReport(Request $request): Response
+    {
+        $query = MaterialRequest::with(['requester', 'department', 'plant', 'approver', 'approvalHistories.approver']);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('request_date', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('request_date', '<=', $request->date_to);
+        }
+
+        $statsQuery = clone $query;
+        $allMatching = $statsQuery->get();
+
+        $stats = [
+            'totalCount' => $allMatching->count(),
+            'approvedCount' => $allMatching->filter(fn ($r) => in_array($r->status?->value ?? $r->status, ['APPROVED', 'PROCESSING', 'COMPLETED']))->count(),
+            'rejectedCount' => $allMatching->filter(fn ($r) => ($r->status?->value ?? $r->status) === 'REJECTED')->count(),
+            'pendingCount' => $allMatching->filter(fn ($r) => in_array($r->status?->value ?? $r->status, ['SUBMITTED', 'PENDING_APPROVAL']))->count(),
+        ];
+
+        $requests = $query->orderBy('id', 'desc')->paginate(20)->withQueryString();
+
+        return Inertia::render('Reports/ApprovalReport', [
+            'requests' => $requests,
+            'filters' => $request->only(['status', 'date_from', 'date_to']),
+            'stats' => $stats,
+        ]);
+    }
+
+    public function exportApprovalExcel(Request $request)
+    {
+        $query = MaterialRequest::with(['requester', 'department', 'plant', 'approver', 'approvalHistories.approver']);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('request_date', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('request_date', '<=', $request->date_to);
+        }
+
+        $requests = $query->orderBy('id', 'desc')->get();
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Approval Report');
+
+        $headers = ['Request No', 'Doc No', 'Date', 'Requester', 'Department', 'Plant', 'Approver', 'Status', 'Approved / Action Date', 'Rejection / Action Reason'];
+        $sheet->fromArray($headers, null, 'A1');
+
+        $row = 2;
+        foreach ($requests as $mr) {
+            $latestHistory = $mr->approvalHistories->last();
+            $actionDate = $mr->approved_at?->format('Y-m-d H:i')
+                ?? $mr->rejected_at?->format('Y-m-d H:i')
+                ?? $latestHistory?->action_at?->format('Y-m-d H:i')
+                ?? '-';
+
+            $reason = $mr->rejection_reason
+                ?? $latestHistory?->reason
+                ?? '-';
+
+            $sheet->fromArray([
+                $mr->request_no,
+                $mr->no_doc ?? '-',
+                $mr->request_date?->format('Y-m-d'),
+                $mr->requester?->name ?? '-',
+                $mr->department?->name ?? '-',
+                $mr->plant?->name ?? '-',
+                $mr->approver?->name ?? '-',
+                $mr->status->value,
+                $actionDate,
+                $reason,
+            ], null, "A{$row}");
+            $row++;
+        }
+
+        $writer = new Xlsx($spreadsheet);
+        $fileName = 'DMRS_Approval_Report_'.date('Ymd_His').'.xlsx';
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
     }
 }
