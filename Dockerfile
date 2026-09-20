@@ -57,7 +57,7 @@ RUN apk add --no-cache \
  && apk del $PHPIZE_DEPS *-dev
 
 # Prepare Nginx directories
-RUN mkdir -p /etc/nginx/templates /etc/nginx/conf.d /etc/nginx/http.d
+RUN mkdir -p /etc/nginx/templates /etc/nginx/http.d
 
 # Copy Nginx template & PHP Production Config
 COPY docker/nginx/default.conf.template /etc/nginx/templates/default.conf.template

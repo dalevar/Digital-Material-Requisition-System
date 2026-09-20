@@ -7,16 +7,15 @@ export PORT="${PORT:-8080}"
 echo "==> Starting DMRS Laravel Application Container..."
 echo "==> Configuring Nginx to listen on port ${PORT}..."
 
-# Ensure Nginx config directories exist
-mkdir -p /etc/nginx/conf.d /etc/nginx/http.d
+# Ensure Nginx http.d config directory exists
+mkdir -p /etc/nginx/http.d
+rm -f /etc/nginx/conf.d/default.conf 2>/dev/null || true
 
-# Substitute ${PORT} into Nginx configuration
+# Substitute ${PORT} into Alpine Nginx configuration (/etc/nginx/http.d/default.conf)
 if command -v envsubst > /dev/null 2>&1; then
-    envsubst '${PORT}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
-    cp /etc/nginx/conf.d/default.conf /etc/nginx/http.d/default.conf 2>/dev/null || true
+    envsubst '${PORT}' < /etc/nginx/templates/default.conf.template > /etc/nginx/http.d/default.conf
 else
-    sed "s/\${PORT}/${PORT}/g" /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
-    cp /etc/nginx/conf.d/default.conf /etc/nginx/http.d/default.conf 2>/dev/null || true
+    sed "s/\${PORT}/${PORT}/g" /etc/nginx/templates/default.conf.template > /etc/nginx/http.d/default.conf
 fi
 
 # Environment Validation (Fail-Fast for required variables)
