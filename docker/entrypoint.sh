@@ -45,6 +45,8 @@ php artisan storage:link --force || true
 
 # Production Caching
 echo "==> Running Laravel production optimization commands..."
+echo "==> Testing database connectivity..."
+php artisan migrate:status --no-interaction 2>&1 | head -5 || echo "WARNING: DB check failed — verify DB_HOST/DB_PASSWORD env vars"
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
