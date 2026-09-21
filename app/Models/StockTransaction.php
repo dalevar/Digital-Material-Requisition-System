@@ -45,4 +45,9 @@ class StockTransaction extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function materialRequest(): BelongsTo
+    {
+        return $this->belongsTo(MaterialRequest::class, 'reference_id');
+    }
 }

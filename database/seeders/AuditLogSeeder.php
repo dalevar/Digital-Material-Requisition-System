@@ -19,7 +19,7 @@ class AuditLogSeeder extends Seeder
 
         $startDate = Carbon::parse('2025-10-01');
         $endDate = Carbon::parse('2026-09-21');
-        $targetTotal = 10000;
+        $targetTotal = 20;
         $batchSize = 500;
         $userCount = count($allUsers);
 

@@ -16,7 +16,7 @@ class ReportController extends Controller
 {
     private function getStockMovementQuery(Request $request)
     {
-        $query = StockTransaction::with(['material.category', 'user']);
+        $query = StockTransaction::with(['material.category', 'user', 'materialRequest']);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -31,6 +31,9 @@ class ReportController extends Controller
                     ->orWhereHas('user', function ($uq) use ($search) {
                         $uq->where('name', 'LIKE', "%{$search}%")
                             ->orWhere('username', 'LIKE', "%{$search}%");
+                    })
+                    ->orWhereHas('materialRequest', function ($rq) use ($search) {
+                        $rq->where('no_doc', 'LIKE', "%{$search}%");
                     });
             });
         }
@@ -89,6 +92,7 @@ class ReportController extends Controller
             'UoM',
             'Transaction Type',
             'Reference No',
+            'Doc Archive Ref',
             'Qty In',
             'Qty Out',
             'Balance After',
@@ -108,6 +112,7 @@ class ReportController extends Controller
                 $tx->material?->uom ?? '-',
                 is_object($tx->transaction_type) ? $tx->transaction_type->value : (string) $tx->transaction_type,
                 $tx->reference_no ?? '-',
+                $tx->materialRequest?->no_doc ?? '-',
                 (float) $tx->qty_in,
                 (float) $tx->qty_out,
                 (float) $tx->balance_after,
@@ -227,6 +232,7 @@ class ReportController extends Controller
             'UoM',
             'Transaction Type',
             'Reference No',
+            'Doc Archive Ref',
             'Qty In',
             'Qty Out',
             'Balance After',
@@ -246,6 +252,7 @@ class ReportController extends Controller
                 $tx->material?->uom ?? '-',
                 is_object($tx->transaction_type) ? $tx->transaction_type->value : (string) $tx->transaction_type,
                 $tx->reference_no ?? '-',
+                $tx->materialRequest?->no_doc ?? '-',
                 (float) $tx->qty_in,
                 (float) $tx->qty_out,
                 (float) $tx->balance_after,

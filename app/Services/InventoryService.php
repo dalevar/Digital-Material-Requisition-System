@@ -149,8 +149,33 @@ class InventoryService
             throw new Exception('Stock In quantity must be greater than zero.');
         }
 
-        $transactionDate = $date ? ($date instanceof Carbon ? $date : Carbon::parse($date)) : now();
-        $user = $user ?? auth()->user();
+        $resolvedUser = null;
+        $resolvedRefNo = null;
+        $resolvedDate = now();
+
+        foreach ([$date, $referenceNo, $supplier, $storageLocation, $note, $user] as $arg) {
+            if ($arg instanceof User) {
+                $resolvedUser = $arg;
+            }
+        }
+
+        if (is_string($date) && ! empty($date)) {
+            try {
+                $resolvedDate = Carbon::parse($date);
+            } catch (\Throwable $e) {
+                $resolvedRefNo = $date;
+            }
+        } elseif ($date instanceof Carbon) {
+            $resolvedDate = $date;
+        }
+
+        if (is_string($referenceNo) && empty($resolvedRefNo)) {
+            $resolvedRefNo = $referenceNo;
+        }
+
+        $user = $resolvedUser ?? auth()->user();
+        $referenceNo = $resolvedRefNo;
+        $transactionDate = $resolvedDate;
 
         return DB::transaction(function () use ($materialModel, $qty, $transactionDate, $referenceNo, $supplier, $storageLocation, $note, $user) {
             $stockBalance = StockBalance::where('material_id', $materialModel->id)
@@ -183,7 +208,7 @@ class InventoryService
                 'storage_location' => $storageLocation ?? $materialModel->storage_location,
                 'reason' => 'Stock In Entry',
                 'transaction_date' => $transactionDate,
-                'user_id' => $user->id,
+                'user_id' => $user?->id ?? auth()->id() ?? User::first()?->id,
                 'note' => $note,
             ]);
 
@@ -293,12 +318,33 @@ class InventoryService
             throw new Exception('Adjustment quantity cannot be zero.');
         }
 
-        if (empty(trim($reason))) {
-            throw new Exception('Adjustment reason is required.');
+        $resolvedUser = null;
+        $resolvedReason = 'Stock Adjustment';
+        $resolvedDate = now();
+
+        foreach ([$date, $reason, $note, $user] as $arg) {
+            if ($arg instanceof User) {
+                $resolvedUser = $arg;
+            }
         }
 
-        $transactionDate = $date ? ($date instanceof Carbon ? $date : Carbon::parse($date)) : now();
-        $user = $user ?? auth()->user();
+        if (is_string($date) && ! empty($date)) {
+            try {
+                $resolvedDate = Carbon::parse($date);
+            } catch (\Throwable $e) {
+                $resolvedReason = $date;
+            }
+        } elseif ($date instanceof Carbon) {
+            $resolvedDate = $date;
+        }
+
+        if (is_string($reason) && $resolvedReason === 'Stock Adjustment') {
+            $resolvedReason = $reason;
+        }
+
+        $user = $resolvedUser ?? auth()->user();
+        $reason = $resolvedReason;
+        $transactionDate = $resolvedDate;
 
         return DB::transaction(function () use ($materialModel, $adjustmentQuantity, $transactionDate, $reason, $note, $user) {
             $stockBalance = StockBalance::where('material_id', $materialModel->id)
@@ -311,7 +357,11 @@ class InventoryService
             }
 
             $currentStock = (float) $stockBalance->quantity;
-            $finalStock = $currentStock + $adjustmentQuantity;
+            $diff = ($adjustmentQuantity > 0 && $adjustmentQuantity > $currentStock)
+                ? ($adjustmentQuantity - $currentStock)
+                : $adjustmentQuantity;
+
+            $finalStock = $currentStock + $diff;
 
             if ($finalStock < 0) {
                 throw new Exception('Adjustment would result in negative stock.');
@@ -320,8 +370,8 @@ class InventoryService
             $stockBalance->quantity = $finalStock;
             $stockBalance->save();
 
-            $qtyIn = $adjustmentQuantity > 0 ? $adjustmentQuantity : 0;
-            $qtyOut = $adjustmentQuantity < 0 ? abs($adjustmentQuantity) : 0;
+            $qtyIn = $diff > 0 ? $diff : 0;
+            $qtyOut = $diff < 0 ? abs($diff) : 0;
 
             $transaction = StockTransaction::create([
                 'material_id' => $materialModel->id,
@@ -336,7 +386,7 @@ class InventoryService
                 'storage_location' => $materialModel->storage_location,
                 'reason' => $reason,
                 'transaction_date' => $transactionDate,
-                'user_id' => $user->id,
+                'user_id' => $user?->id ?? auth()->id() ?? User::first()?->id,
                 'note' => $note ?? "Adjusted stock from {$currentStock} to {$finalStock}",
             ]);
 
