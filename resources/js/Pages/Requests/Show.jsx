@@ -96,14 +96,19 @@ export default function Show({ request, plants = [] }) {
     };
 
     const canApprove =
-        (user.role === "APPROVER" || user.role === "EXECUTIVE" || user.role === "ADMIN") &&
+        (user.role === "APPROVER" ||
+            user.role === "EXECUTIVE" ||
+            user.role === "ADMIN") &&
         user.id !== request.requester_id &&
         ["SUBMITTED", "PENDING_APPROVAL"].includes(request.status);
 
     const canEdit =
         user.role === "ADMIN"
-            ? !["COMPLETED", "CANCELLED", "CANCELLED_AFTER_APPROVAL"].includes(request.status)
-            : user.id === request.requester_id && ["DRAFT", "REJECTED"].includes(request.status);
+            ? !["REJECTED", "CANCELLED", "CANCELLED_AFTER_APPROVAL"].includes(
+                  request.status,
+              )
+            : user.id === request.requester_id &&
+              ["DRAFT", "COMPLETED", "APPROVED"].includes(request.status);
 
     const canSupplement =
         user.role === "ADMIN" &&
@@ -335,7 +340,9 @@ export default function Show({ request, plants = [] }) {
                             Request Date
                         </div>
                         <div className="font-semibold text-slate-800 mt-0.5">
-                            {request.request_date ? String(request.request_date).split("T")[0] : "-"}
+                            {request.request_date
+                                ? String(request.request_date).split("T")[0]
+                                : "-"}
                         </div>
                     </div>
                     <div>

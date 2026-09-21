@@ -117,7 +117,7 @@
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .font-mono { font-family: 'Courier', monospace; }
-        
+
         .signature-table {
             width: 100%;
             border-collapse: collapse;
@@ -209,13 +209,13 @@
                 @if($logoBase64)
                     <img src="{{ $logoBase64 }}" style="max-height: 48px; max-width: 170px;">
                 @else
-                    <span style="font-weight: bold; font-size: 14px; color: #1e3a8a;">PT. GUTHRIE</span>
+                    {{-- <span style="font-weight: bold; font-size: 14px; color: #1e3a8a;">PT. GUTHRIE</span> --}}
                 @endif
             </td>
-            <td style="width: 48%;">
+            {{-- <td style="width: 48%;">
                 <div class="company-title">PT. Guthrie International Pulau Laut Refinery</div>
                 <div class="system-subtitle">Digital Material Requisition System (DMRS)</div>
-            </td>
+            </td> --}}
             <td style="width: 30%;" class="doc-title">
                 MATERIAL REQUISITION FORM
                 <div style="margin-top: 4px;">

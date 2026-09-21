@@ -35,14 +35,19 @@ class MaterialRequestPolicy
     {
         if ($user->isAdmin()) {
             return ! in_array($materialRequest->status, [
-                MaterialRequestStatus::COMPLETED,
+                MaterialRequestStatus::REJECTED,
                 MaterialRequestStatus::CANCELLED,
                 MaterialRequestStatus::CANCELLED_AFTER_APPROVAL,
+                MaterialRequestStatus::PROCESSING,
             ]);
         }
 
         if ($materialRequest->requester_id === $user->id) {
-            return in_array($materialRequest->status, [MaterialRequestStatus::DRAFT, MaterialRequestStatus::REJECTED]);
+            return in_array($materialRequest->status, [
+                MaterialRequestStatus::DRAFT,
+                MaterialRequestStatus::COMPLETED,
+                MaterialRequestStatus::APPROVED,
+            ]);
         }
 
         return false;

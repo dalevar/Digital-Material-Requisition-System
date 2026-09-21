@@ -75,11 +75,11 @@ class MaterialRequestService
     public function updateRequest(MaterialRequest $request, array $headerData, array $items, User $user): MaterialRequest
     {
         if ($user->isAdmin()) {
-            if (in_array($request->status, [MaterialRequestStatus::COMPLETED, MaterialRequestStatus::CANCELLED, MaterialRequestStatus::CANCELLED_AFTER_APPROVAL])) {
-                throw new Exception('Completed or Cancelled requests cannot be edited.');
+            if (in_array($request->status, [MaterialRequestStatus::REJECTED, MaterialRequestStatus::CANCELLED, MaterialRequestStatus::CANCELLED_AFTER_APPROVAL])) {
+                throw new Exception('Rejected or Cancelled After Approval requests cannot be edited.');
             }
-        } elseif (! in_array($request->status, [MaterialRequestStatus::DRAFT, MaterialRequestStatus::REJECTED])) {
-            throw new Exception('Only DRAFT or REJECTED requests can be edited by requester.');
+        } elseif (! in_array($request->status, [MaterialRequestStatus::DRAFT, MaterialRequestStatus::COMPLETED, MaterialRequestStatus::APPROVED])) {
+            throw new Exception('Only DRAFT, APPROVED, or COMPLETED requests can be edited by requester.');
         }
 
         return DB::transaction(function () use ($request, $headerData, $items, $user) {
