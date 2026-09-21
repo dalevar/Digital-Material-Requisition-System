@@ -1,8 +1,8 @@
 import React from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import AppShell from '@/Layouts/AppShell';
 import StatusBadge from '@/Components/StatusBadge';
-import { Download } from 'lucide-react';
+import { Download, Eye } from 'lucide-react';
 
 export default function RequestReport({ requests, filters }) {
   return (
@@ -35,6 +35,7 @@ export default function RequestReport({ requests, filters }) {
                 <th className="p-4">Date</th>
                 <th className="p-4">Approver</th>
                 <th className="p-4">Status</th>
+                <th className="p-4 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -48,11 +49,20 @@ export default function RequestReport({ requests, filters }) {
                     <td className="p-4">{req.request_date}</td>
                     <td className="p-4">{req.approver?.name || '-'}</td>
                     <td className="p-4"><StatusBadge status={req.status} /></td>
+                    <td className="p-4 text-right">
+                      <Link
+                        href={`/requests/${req.id}`}
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-semibold text-xs transition-colors"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-red-600" />
+                        <span>Detail View</span>
+                      </Link>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="p-8 text-center text-slate-400 font-medium">
+                  <td colSpan="8" className="p-8 text-center text-slate-400 font-medium">
                     No material request report records found.
                   </td>
                 </tr>

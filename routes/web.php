@@ -73,11 +73,14 @@ Route::middleware('auth')->group(function () {
     // Approval Monitoring & Inbox
     Route::middleware('role:APPROVER,EXECUTIVE,ADMIN')->get('/approvals/inbox', [ApprovalController::class, 'inbox'])->name('approvals.inbox');
 
-    // Approver Dashboard & Decision Actions (Approver / Executive only)
-    Route::middleware('role:APPROVER,EXECUTIVE')->group(function () {
-        Route::get('/approver/dashboard', [DashboardController::class, 'approverDashboard'])->name('approver.dashboard');
+    // Approver Dashboard & Decision Actions (Approver / Executive / Admin)
+    Route::middleware('role:APPROVER,EXECUTIVE,ADMIN')->group(function () {
         Route::post('/approvals/{materialRequest}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
         Route::post('/approvals/{materialRequest}/reject', [ApprovalController::class, 'reject'])->name('approvals.reject');
+    });
+
+    Route::middleware('role:APPROVER,EXECUTIVE')->group(function () {
+        Route::get('/approver/dashboard', [DashboardController::class, 'approverDashboard'])->name('approver.dashboard');
     });
 
     // Admin Routes
@@ -131,6 +134,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/requests/create', [MaterialRequestController::class, 'create'])->name('requests.create');
     Route::post('/requests', [MaterialRequestController::class, 'store'])->name('requests.store');
     Route::get('/requests/{materialRequest}', [MaterialRequestController::class, 'show'])->name('requests.show');
+    Route::get('/requests/{materialRequest}/edit', [MaterialRequestController::class, 'edit'])->name('requests.edit');
+    Route::put('/requests/{materialRequest}', [MaterialRequestController::class, 'update'])->name('requests.update');
     Route::post('/requests/{materialRequest}/submit', [MaterialRequestController::class, 'submit'])->name('requests.submit');
     Route::get('/requests/{materialRequest}/pdf', [MaterialRequestController::class, 'downloadPdf'])->name('requests.pdf');
 
@@ -138,7 +143,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports/requests', [ReportController::class, 'requestReport'])->name('reports.requests');
     Route::get('/reports/stock', [ReportController::class, 'stockReport'])->middleware('role:ADMIN,APPROVER,EXECUTIVE')->name('reports.stock');
     Route::get('/reports/stock/excel', [ReportController::class, 'exportStockExcel'])->middleware('role:ADMIN,APPROVER,EXECUTIVE')->name('reports.stock.excel');
-    Route::get('/reports/stock-movement', fn() => redirect()->route('reports.stock'))->middleware('role:ADMIN,APPROVER,EXECUTIVE');
+    Route::get('/reports/stock-movement', fn () => redirect()->route('reports.stock'))->middleware('role:ADMIN,APPROVER,EXECUTIVE');
     Route::get('/reports/stock-movement/excel', [ReportController::class, 'exportStockExcel'])->middleware('role:ADMIN,APPROVER,EXECUTIVE');
     Route::get('/reports/approvals', [ReportController::class, 'approvalReport'])->middleware('role:ADMIN,APPROVER,EXECUTIVE')->name('reports.approvals');
     Route::get('/reports/requests/excel', [ReportController::class, 'exportRequestExcel'])->name('reports.requests.excel');

@@ -179,4 +179,77 @@ class MaterialRequestTest extends TestCase
         $this->assertNotNull($reversalTx);
         $this->assertEquals(20, $reversalTx->qty_in);
     }
+
+    public function test_admin_can_approve_and_reject_request(): void
+    {
+        $mrService = new MaterialRequestService;
+
+        $draft = $mrService->createDraft($this->user, [
+            'approver_id' => $this->approver->id,
+        ], [
+            ['material_id' => $this->material->id, 'qty' => 5],
+        ]);
+        $submitted = $mrService->submitRequest($draft, $this->user);
+
+        // Admin approves request
+        $response = $this->actingAs($this->admin)->post("/approvals/{$submitted->id}/approve", [
+            'reason' => 'Admin Approval Note',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertEquals(MaterialRequestStatus::APPROVED, $submitted->fresh()->status);
+
+        // Create another request and Admin rejects it
+        $draft2 = $mrService->createDraft($this->user, [
+            'approver_id' => $this->approver->id,
+        ], [
+            ['material_id' => $this->material->id, 'qty' => 3],
+        ]);
+        $submitted2 = $mrService->submitRequest($draft2, $this->user);
+
+        $response2 = $this->actingAs($this->admin)->post("/approvals/{$submitted2->id}/reject", [
+            'rejection_reason' => 'Admin Reject Reason',
+        ]);
+
+        $response2->assertRedirect();
+        $this->assertEquals(MaterialRequestStatus::REJECTED, $submitted2->fresh()->status);
+    }
+
+    public function test_admin_can_edit_request_header_and_items_list(): void
+    {
+        $mrService = new MaterialRequestService;
+
+        $draft = $mrService->createDraft($this->user, [
+            'approver_id' => $this->approver->id,
+            'gl_account' => '111111',
+            'reason' => 'Old Reason',
+        ], [
+            ['material_id' => $this->material->id, 'qty' => 5],
+        ]);
+
+        $response = $this->actingAs($this->admin)->put("/requests/{$draft->id}", [
+            'request_date' => now()->toDateString(),
+            'no_doc' => 'DOC-ADMIN-99',
+            'gl_account' => '999999',
+            'pwo_no' => 'PWO-ADMIN-1',
+            'pur_org' => '1000',
+            'pur_group' => '001',
+            'cost_center' => 'CC-ADMIN',
+            'reason' => 'Updated by Admin',
+            'approver_id' => $this->approver->id,
+            'items' => [
+                ['material_id' => $this->material->id, 'qty' => 15, 'note' => 'Updated Qty by Admin'],
+            ],
+        ]);
+
+        $response->assertRedirect("/requests/{$draft->id}");
+        $updated = $draft->fresh(['items']);
+
+        $this->assertEquals('DOC-ADMIN-99', $updated->no_doc);
+        $this->assertEquals('999999', $updated->gl_account);
+        $this->assertEquals('PWO-ADMIN-1', $updated->pwo_no);
+        $this->assertEquals('Updated by Admin', $updated->reason);
+        $this->assertEquals(1, $updated->items->count());
+        $this->assertEquals(15, $updated->items->first()->qty);
+    }
 }

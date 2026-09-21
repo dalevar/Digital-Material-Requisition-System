@@ -74,25 +74,36 @@ class MaterialRequestService
 
     public function updateRequest(MaterialRequest $request, array $headerData, array $items, User $user): MaterialRequest
     {
-        if (! in_array($request->status, [MaterialRequestStatus::DRAFT, MaterialRequestStatus::REJECTED])) {
+        if ($user->isAdmin()) {
+            if (in_array($request->status, [MaterialRequestStatus::COMPLETED, MaterialRequestStatus::CANCELLED, MaterialRequestStatus::CANCELLED_AFTER_APPROVAL])) {
+                throw new Exception('Completed or Cancelled requests cannot be edited.');
+            }
+        } elseif (! in_array($request->status, [MaterialRequestStatus::DRAFT, MaterialRequestStatus::REJECTED])) {
             throw new Exception('Only DRAFT or REJECTED requests can be edited by requester.');
         }
 
         return DB::transaction(function () use ($request, $headerData, $items, $user) {
-            $oldData = $request->toArray();
+            $oldData = $request->load('items')->toArray();
 
-            $request->update([
-                'no_doc' => $headerData['no_doc'] ?? $request->no_doc,
+            $updateData = [
+                'request_date' => $headerData['request_date'] ?? $request->request_date,
+                'no_doc' => array_key_exists('no_doc', $headerData) ? $headerData['no_doc'] : $request->no_doc,
                 'department_id' => $headerData['department_id'] ?? $request->department_id,
                 'plant_id' => $headerData['plant_id'] ?? $request->plant_id,
-                'gl_account' => $headerData['gl_account'] ?? $request->gl_account,
-                'pwo_no' => $headerData['pwo_no'] ?? $request->pwo_no,
-                'pur_org' => $headerData['pur_org'] ?? $request->pur_org,
-                'pur_group' => $headerData['pur_group'] ?? $request->pur_group,
-                'cost_center' => $headerData['cost_center'] ?? $request->cost_center,
-                'reason' => $headerData['reason'] ?? $request->reason,
+                'gl_account' => array_key_exists('gl_account', $headerData) ? $headerData['gl_account'] : $request->gl_account,
+                'pwo_no' => array_key_exists('pwo_no', $headerData) ? $headerData['pwo_no'] : $request->pwo_no,
+                'pur_org' => array_key_exists('pur_org', $headerData) ? $headerData['pur_org'] : $request->pur_org,
+                'pur_group' => array_key_exists('pur_group', $headerData) ? $headerData['pur_group'] : $request->pur_group,
+                'cost_center' => array_key_exists('cost_center', $headerData) ? $headerData['cost_center'] : $request->cost_center,
+                'reason' => array_key_exists('reason', $headerData) ? $headerData['reason'] : $request->reason,
                 'approver_id' => $headerData['approver_id'] ?? $request->approver_id,
-            ]);
+            ];
+
+            if ($user->isAdmin() && ! empty($headerData['requester_id'])) {
+                $updateData['requester_id'] = $headerData['requester_id'];
+            }
+
+            $request->update($updateData);
 
             $request->items()->delete();
             $this->saveItems($request, $items);
@@ -104,7 +115,7 @@ class MaterialRequestService
                 'MaterialRequest',
                 (string) $request->id,
                 $oldData,
-                $request->toArray(),
+                $request->fresh('items')->toArray(),
                 "Updated request {$request->request_no}"
             );
 

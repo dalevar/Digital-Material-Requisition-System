@@ -16,7 +16,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Layers,
-  List
+  List,
+  Eye,
 } from 'lucide-react';
 
 function Pagination({ meta }) {
@@ -377,6 +378,7 @@ export default function StockReport({
                       <th className="px-4 py-3 text-right">Balance</th>
                       <th className="px-4 py-3">Executed By</th>
                       <th className="px-4 py-3">Note / Reason</th>
+                      <th className="px-4 py-3 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
@@ -418,6 +420,27 @@ export default function StockReport({
                           <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate" title={tx.note || tx.reason || ''}>
                             {tx.note || tx.reason || '-'}
                           </td>
+                          <td className="px-4 py-3 text-right">
+                            {tx.reference_type === 'MATERIAL_REQUEST' || tx.reference_id ? (
+                              <Link
+                                href={`/requests/${tx.reference_id}`}
+                                className="inline-flex items-center space-x-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded text-xs transition-colors"
+                                title="View Detail Request"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-red-600" />
+                                <span>Detail View</span>
+                              </Link>
+                            ) : (
+                              <Link
+                                href={`/inventory/history?material_id=${tx.material_id}`}
+                                className="inline-flex items-center space-x-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded text-xs transition-colors"
+                                title="View Material History"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-slate-600" />
+                                <span>Detail View</span>
+                              </Link>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
@@ -450,6 +473,7 @@ export default function StockReport({
                     <th className="p-4 text-right">Closing SOH</th>
                     <th className="p-4 text-right">Min Stock</th>
                     <th className="p-4 text-center">Status</th>
+                    <th className="p-4 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -472,6 +496,16 @@ export default function StockReport({
                       </td>
                       <td className="p-4 text-center">
                         <StatusBadge status={mat.status} />
+                      </td>
+                      <td className="p-4 text-right">
+                        <Link
+                          href={`/inventory/history?material_id=${mat.id}`}
+                          className="inline-flex items-center space-x-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded text-xs transition-colors"
+                          title="View Material Movements"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-slate-600" />
+                          <span>Detail View</span>
+                        </Link>
                       </td>
                     </tr>
                   ))}

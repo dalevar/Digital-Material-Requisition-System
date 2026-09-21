@@ -172,6 +172,75 @@ class MaterialRequestController extends Controller
         ]);
     }
 
+    public function edit(MaterialRequest $materialRequest): Response
+    {
+        $this->authorize('update', $materialRequest);
+
+        $materialRequest->load([
+            'requester',
+            'approver',
+            'department',
+            'plant',
+            'items.material.stockBalance',
+        ]);
+
+        $materials = Material::with('stockBalance')->where('status', 'ACTIVE')->get()->map(function ($m) {
+            return [
+                'id' => $m->id,
+                'material_number' => $m->material_number,
+                'description' => $m->description,
+                'uom' => $m->uom,
+                'soh' => $m->soh,
+                'storage_location' => $m->storage_location,
+            ];
+        });
+
+        $approvers = User::whereHas('role', fn ($r) => $r->whereIn('name', ['APPROVER', 'EXECUTIVE']))
+            ->get();
+
+        $departments = Department::where('is_active', true)->get();
+        $plants = Plant::where('is_active', true)->get();
+        $requesters = User::orderBy('name')->get(['id', 'name', 'employee_id']);
+
+        return Inertia::render('Requests/Edit', [
+            'request' => $materialRequest,
+            'materials' => $materials,
+            'approvers' => $approvers,
+            'departments' => $departments,
+            'plants' => $plants,
+            'requesters' => $requesters,
+        ]);
+    }
+
+    public function update(Request $request, MaterialRequest $materialRequest, MaterialRequestService $service): RedirectResponse
+    {
+        $this->authorize('update', $materialRequest);
+
+        $validated = $request->validate([
+            'request_date' => ['required', 'date'],
+            'no_doc' => ['nullable', 'string', 'max:100'],
+            'department_id' => ['nullable', 'exists:departments,id'],
+            'plant_id' => ['nullable', 'exists:plants,id'],
+            'gl_account' => ['nullable', 'string', 'max:50'],
+            'pwo_no' => ['nullable', 'string', 'max:50'],
+            'pur_org' => ['nullable', 'string', 'max:50'],
+            'pur_group' => ['nullable', 'string', 'max:50'],
+            'cost_center' => ['nullable', 'string', 'max:50'],
+            'reason' => ['nullable', 'string'],
+            'approver_id' => ['nullable', 'exists:users,id'],
+            'requester_id' => ['nullable', 'exists:users,id'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.material_id' => ['required', 'exists:materials,id'],
+            'items.*.qty' => ['required', 'numeric', 'gt:0'],
+            'items.*.description' => ['nullable', 'string'],
+            'items.*.note' => ['nullable', 'string'],
+        ]);
+
+        $service->updateRequest($materialRequest, $validated, $validated['items'], $request->user());
+
+        return redirect()->route('requests.show', $materialRequest->id)->with('success', "Request {$materialRequest->request_no} updated successfully.");
+    }
+
     public function submit(MaterialRequest $materialRequest, MaterialRequestService $service): RedirectResponse
     {
         $this->authorize('update', $materialRequest);

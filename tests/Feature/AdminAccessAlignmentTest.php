@@ -127,8 +127,8 @@ class AdminAccessAlignmentTest extends TestCase
         );
     }
 
-    /** Test 2 — Admin cannot approve request (403 Forbidden) */
-    public function test_admin_cannot_approve_request(): void
+    /** Test 2 — Admin can approve request */
+    public function test_admin_can_approve_request(): void
     {
         $mr = MaterialRequest::create([
             'request_no' => 'MR-2026-900002',
@@ -141,15 +141,15 @@ class AdminAccessAlignmentTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->admin)->post("/approvals/{$mr->id}/approve", [
-            'reason' => 'Admin attempt to approve',
+            'reason' => 'Admin approval note',
         ]);
 
-        $response->assertStatus(403);
-        $this->assertEquals(MaterialRequestStatus::SUBMITTED, $mr->fresh()->status);
+        $response->assertRedirect();
+        $this->assertEquals(MaterialRequestStatus::APPROVED, $mr->fresh()->status);
     }
 
-    /** Test 3 — Admin cannot reject request (403 Forbidden) */
-    public function test_admin_cannot_reject_request(): void
+    /** Test 3 — Admin can reject request */
+    public function test_admin_can_reject_request(): void
     {
         $mr = MaterialRequest::create([
             'request_no' => 'MR-2026-900003',
@@ -162,11 +162,11 @@ class AdminAccessAlignmentTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->admin)->post("/approvals/{$mr->id}/reject", [
-            'rejection_reason' => 'Admin attempt to reject',
+            'rejection_reason' => 'Admin rejection reason',
         ]);
 
-        $response->assertStatus(403);
-        $this->assertEquals(MaterialRequestStatus::SUBMITTED, $mr->fresh()->status);
+        $response->assertRedirect();
+        $this->assertEquals(MaterialRequestStatus::REJECTED, $mr->fresh()->status);
     }
 
     /** Test 4 — Assigned Approver can approve */

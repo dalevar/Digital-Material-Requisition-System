@@ -158,12 +158,13 @@ export default function AppShell({ children, title, breadcrumbs = [] }) {
     ];
 
     const isNavActive = (href) => {
+        const urlPath = currentUrl.split("?")[0];
         if (href === "/dashboard") {
             return (
-                currentUrl === "/dashboard" || currentUrl.includes("/dashboard")
+                urlPath === "/dashboard" || urlPath.includes("/dashboard")
             );
         }
-        return currentUrl === href || currentUrl.startsWith(href + "/");
+        return urlPath === href || urlPath.startsWith(href + "/");
     };
 
     return (

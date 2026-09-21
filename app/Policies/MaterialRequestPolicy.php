@@ -33,8 +33,12 @@ class MaterialRequestPolicy
 
     public function update(User $user, MaterialRequest $materialRequest): bool
     {
-        if ($user->isAdmin() && $materialRequest->status === MaterialRequestStatus::APPROVED) {
-            return true; // Admin supplementary MRF edits
+        if ($user->isAdmin()) {
+            return ! in_array($materialRequest->status, [
+                MaterialRequestStatus::COMPLETED,
+                MaterialRequestStatus::CANCELLED,
+                MaterialRequestStatus::CANCELLED_AFTER_APPROVAL,
+            ]);
         }
 
         if ($materialRequest->requester_id === $user->id) {
@@ -54,6 +58,10 @@ class MaterialRequestPolicy
             return false;
         }
 
+        if ($user->isAdmin()) {
+            return true;
+        }
+
         return $user->isApprover() && ($materialRequest->approver_id === $user->id || $user->department_id === $materialRequest->department_id);
     }
 
@@ -64,6 +72,6 @@ class MaterialRequestPolicy
 
     public function cancelApproved(User $user, MaterialRequest $materialRequest): bool
     {
-        return $user->isAdmin() && $materialRequest->status === MaterialRequestStatus::APPROVED;
+        return $user->isAdmin() && in_array($materialRequest->status, [MaterialRequestStatus::APPROVED, MaterialRequestStatus::PROCESSING]);
     }
 }
