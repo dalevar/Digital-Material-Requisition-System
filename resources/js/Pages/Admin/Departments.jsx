@@ -3,7 +3,8 @@ import { Head, useForm, router, Link } from '@inertiajs/react';
 import AppShell from '@/Layouts/AppShell';
 import EmptyState from '@/Components/EmptyState';
 import ConfirmationModal from '@/Components/ConfirmationModal';
-import { Building2, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight, Power, PowerOff } from 'lucide-react';
+import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
+import { Building2, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight, Power, PowerOff, Trash2 } from 'lucide-react';
 
 function Pagination({ meta }) {
   if (!meta || meta.last_page <= 1) return null;
@@ -77,6 +78,26 @@ export default function Departments({ departments = { data: [] }, filters = {} }
   const [editingDept, setEditingDept] = useState(null);
   const [toggleDept, setToggleDept] = useState(null);
   const [toggleModalOpen, setToggleModalOpen] = useState(false);
+  const [deleteDept, setDeleteDept] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const openDeleteModal = (dept) => {
+    setDeleteDept(dept);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteDept) return;
+    setDeleting(true);
+    router.delete(`/admin/departments/${deleteDept.id}`, {
+      onSuccess: () => {
+        setDeleteModalOpen(false);
+        setDeleteDept(null);
+      },
+      onFinish: () => setDeleting(false),
+    });
+  };
   const [search, setSearch] = useState(filters.search ?? '');
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '');
 
@@ -268,6 +289,14 @@ export default function Departments({ departments = { data: [] }, filters = {} }
                       >
                         {dept.is_active ? <PowerOff className="w-4 h-4 text-rose-600" /> : <Power className="w-4 h-4 text-emerald-600" />}
                       </button>
+
+                      <button
+                        onClick={() => openDeleteModal(dept)}
+                        className="p-1 text-slate-500 hover:text-red-700 transition-colors"
+                        title="Delete Department"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-600" />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -367,6 +396,16 @@ export default function Departments({ departments = { data: [] }, filters = {} }
         confirmText={toggleDept?.is_active ? 'Deactivate' : 'Activate'}
         cancelText="Cancel"
         variant={toggleDept?.is_active ? 'danger' : 'success'}
+      />
+      {/* Delete Department Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Department"
+        description="Are you sure you want to permanently delete this department?"
+        itemName={deleteDept ? `${deleteDept.name} (${deleteDept.code})` : ''}
+        processing={deleting}
       />
     </AppShell>
   );

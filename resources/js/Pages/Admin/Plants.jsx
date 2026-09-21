@@ -3,7 +3,8 @@ import { Head, useForm, router, Link } from '@inertiajs/react';
 import AppShell from '@/Layouts/AppShell';
 import EmptyState from '@/Components/EmptyState';
 import ConfirmationModal from '@/Components/ConfirmationModal';
-import { Factory, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight, Power, PowerOff } from 'lucide-react';
+import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
+import { Factory, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight, Power, PowerOff, Trash2 } from 'lucide-react';
 
 function Pagination({ meta }) {
   if (!meta || meta.last_page <= 1) return null;
@@ -77,6 +78,26 @@ export default function Plants({ plants = { data: [] }, filters = {} }) {
   const [editingPlant, setEditingPlant] = useState(null);
   const [togglePlant, setTogglePlant] = useState(null);
   const [toggleModalOpen, setToggleModalOpen] = useState(false);
+  const [deletePlant, setDeletePlant] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const openDeleteModal = (plant) => {
+    setDeletePlant(plant);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deletePlant) return;
+    setDeleting(true);
+    router.delete(`/admin/plants/${deletePlant.id}`, {
+      onSuccess: () => {
+        setDeleteModalOpen(false);
+        setDeletePlant(null);
+      },
+      onFinish: () => setDeleting(false),
+    });
+  };
   const [search, setSearch] = useState(filters.search ?? '');
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '');
 
@@ -273,6 +294,14 @@ export default function Plants({ plants = { data: [] }, filters = {} }) {
                       >
                         {p.is_active ? <PowerOff className="w-4 h-4 text-rose-600" /> : <Power className="w-4 h-4 text-emerald-600" />}
                       </button>
+
+                      <button
+                        onClick={() => openDeleteModal(p)}
+                        className="p-1 text-slate-500 hover:text-red-700 transition-colors"
+                        title="Delete Plant"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-600" />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -383,6 +412,16 @@ export default function Plants({ plants = { data: [] }, filters = {} }) {
         confirmText={togglePlant?.is_active ? 'Deactivate' : 'Activate'}
         cancelText="Cancel"
         variant={togglePlant?.is_active ? 'danger' : 'success'}
+      />
+      {/* Delete Plant Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Plant"
+        description="Are you sure you want to permanently delete this plant location?"
+        itemName={deletePlant ? `${deletePlant.name} (${deletePlant.code})` : ''}
+        processing={deleting}
       />
     </AppShell>
   );

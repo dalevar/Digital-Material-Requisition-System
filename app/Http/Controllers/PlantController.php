@@ -92,4 +92,25 @@ class PlantController extends Controller
 
         return back()->with('success', "Plant {$plant->name} updated successfully.");
     }
+
+    public function destroy(Plant $plant, Request $request): RedirectResponse
+    {
+        $this->authorize('delete', $plant);
+
+        $oldData = $plant->toArray();
+        $plant->delete();
+
+        AuditService::log(
+            $request->user(),
+            'DELETE_PLANT',
+            'MasterData',
+            'Plant',
+            (string) $plant->id,
+            $oldData,
+            null,
+            "Deleted plant {$oldData['name']} ({$oldData['code']})"
+        );
+
+        return back()->with('success', "Plant {$oldData['name']} deleted successfully.");
+    }
 }

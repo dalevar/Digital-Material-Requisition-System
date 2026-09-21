@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'inventory/*',
             'stock/*',
+            'admin/*',
         ]);
         $middleware->alias([
             'role' => EnsureRole::class,

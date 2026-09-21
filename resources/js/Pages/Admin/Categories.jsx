@@ -3,7 +3,8 @@ import { Head, useForm, router, Link } from '@inertiajs/react';
 import AppShell from '@/Layouts/AppShell';
 import EmptyState from '@/Components/EmptyState';
 import ConfirmationModal from '@/Components/ConfirmationModal';
-import { Package, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight, Power, PowerOff } from 'lucide-react';
+import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
+import { Package, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight, Power, PowerOff, Trash2 } from 'lucide-react';
 
 function Pagination({ meta }) {
   if (!meta || meta.last_page <= 1) return null;
@@ -77,6 +78,26 @@ export default function Categories({ categories = { data: [] }, filters = {} }) 
   const [editingCat, setEditingCat] = useState(null);
   const [toggleCat, setToggleCat] = useState(null);
   const [toggleModalOpen, setToggleModalOpen] = useState(false);
+  const [deleteCat, setDeleteCat] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const openDeleteModal = (cat) => {
+    setDeleteCat(cat);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteCat) return;
+    setDeleting(true);
+    router.delete(`/admin/categories/${deleteCat.id}`, {
+      onSuccess: () => {
+        setDeleteModalOpen(false);
+        setDeleteCat(null);
+      },
+      onFinish: () => setDeleting(false),
+    });
+  };
   const [search, setSearch] = useState(filters.search ?? '');
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '');
 
@@ -268,6 +289,14 @@ export default function Categories({ categories = { data: [] }, filters = {} }) 
                       >
                         {cat.is_active ? <PowerOff className="w-4 h-4 text-rose-600" /> : <Power className="w-4 h-4 text-emerald-600" />}
                       </button>
+
+                      <button
+                        onClick={() => openDeleteModal(cat)}
+                        className="p-1 text-slate-500 hover:text-red-700 transition-colors"
+                        title="Delete Category"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-600" />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -367,6 +396,16 @@ export default function Categories({ categories = { data: [] }, filters = {} }) 
         confirmText={toggleCat?.is_active ? 'Deactivate' : 'Activate'}
         cancelText="Cancel"
         variant={toggleCat?.is_active ? 'danger' : 'success'}
+      />
+      {/* Delete Category Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Material Category"
+        description="Are you sure you want to permanently delete this material category?"
+        itemName={deleteCat ? `${deleteCat.name} (${deleteCat.code})` : ''}
+        processing={deleting}
       />
     </AppShell>
   );

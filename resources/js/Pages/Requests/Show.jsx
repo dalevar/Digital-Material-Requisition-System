@@ -20,6 +20,7 @@ import {
     Calendar,
     ShieldCheck,
     Info,
+    Trash2,
 } from "lucide-react";
 
 export default function Show({ request, plants = [] }) {
@@ -37,6 +38,8 @@ export default function Show({ request, plants = [] }) {
     const [cancelModalOpen, setCancelModalOpen] = useState(false);
     const [stockOutModalOpen, setStockOutModalOpen] = useState(false);
     const [stockOutProcessing, setStockOutProcessing] = useState(false);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [deleteProcessing, setDeleteProcessing] = useState(false);
 
     // Forms
     const approveForm = useForm({ reason: "" });
@@ -95,6 +98,16 @@ export default function Show({ request, plants = [] }) {
         );
     };
 
+    const handleConfirmDelete = () => {
+        setDeleteProcessing(true);
+        router.delete(`/requests/${request.id}`, {
+            onFinish: () => {
+                setDeleteProcessing(false);
+                setDeleteModalOpen(false);
+            },
+        });
+    };
+
     const canApprove =
         (user.role === "APPROVER" ||
             user.role === "EXECUTIVE" ||
@@ -109,6 +122,13 @@ export default function Show({ request, plants = [] }) {
               )
             : user.id === request.requester_id &&
               ["DRAFT", "COMPLETED", "APPROVED"].includes(request.status);
+
+    const canDelete =
+        (user.role === "ADMIN" ||
+            user.role === "APPROVER" ||
+            user.role === "EXECUTIVE" ||
+            user.id === request.requester_id) &&
+        ["DRAFT"].includes(request.status);
 
     const canSupplement =
         user.role === "ADMIN" &&
@@ -207,6 +227,16 @@ export default function Show({ request, plants = [] }) {
                             <Edit className="w-4 h-4" />
                             <span>Edit Request</span>
                         </Link>
+                    )}
+
+                    {canDelete && (
+                        <button
+                            onClick={() => setDeleteModalOpen(true)}
+                            className="inline-flex items-center space-x-1.5 px-3.5 py-2 border border-red-700 hover:bg-red-700 text-red-700 hover:text-white rounded-md text-xs font-semibold shadow-xs transition-colors"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            <span>Delete Request</span>
+                        </button>
                     )}
 
                     {canIssueStock && (
@@ -406,15 +436,6 @@ export default function Show({ request, plants = [] }) {
                     <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                         Requisitioned Material Items List
                     </h2>
-                    {canEdit && (
-                        <Link
-                            href={`/requests/${request.id}/edit`}
-                            className="inline-flex items-center space-x-1.5 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold shadow-xs transition-colors"
-                        >
-                            <Edit className="w-3.5 h-3.5" />
-                            <span>Edit Items List</span>
-                        </Link>
-                    )}
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs text-slate-700">
@@ -939,6 +960,37 @@ export default function Show({ request, plants = [] }) {
                         <span>
                             Stock On Hand (SOH) will be deducted immediately.
                             This action cannot be undone.
+                        </span>
+                    </div>
+                </div>
+            </ConfirmationModal>
+
+            {/* Delete Draft Request Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={deleteModalOpen}
+                onClose={() => setDeleteModalOpen(false)}
+                onConfirm={handleConfirmDelete}
+                title="Delete Draft Request"
+                description="Are you sure you want to permanently delete this draft request? This action cannot be undone."
+                confirmText="Delete Permanently"
+                cancelText="Cancel"
+                variant="danger"
+                processing={deleteProcessing}
+            >
+                <div className="space-y-2 bg-slate-50 p-3.5 rounded-lg border border-slate-200 text-xs mt-2">
+                    <div>
+                        <span className="font-semibold text-slate-500">
+                            Request Number:{" "}
+                        </span>
+                        <span className="font-bold font-mono text-slate-900">
+                            {request.request_no}
+                        </span>
+                    </div>
+                    <div className="p-2.5 bg-red-50 border border-red-200 rounded-md text-red-900 text-[11px] font-medium flex items-start space-x-2">
+                        <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                        <span>
+                            All items in this draft will be permanently removed
+                            from the system.
                         </span>
                     </div>
                 </div>

@@ -7,6 +7,7 @@ use App\Models\MaterialCategory;
 use App\Models\Plant;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -111,5 +112,23 @@ class MasterDataTest extends TestCase
             'is_active' => true,
         ]);
         $response->assertStatus(403);
+    }
+
+    public function test_admin_can_delete_master_data(): void
+    {
+        $dept = Department::create(['code' => 'DEL-DEPT', 'name' => 'Delete Dept', 'is_active' => true]);
+        $response = $this->actingAs($this->admin)->delete("/admin/departments/{$dept->id}");
+        $response->assertRedirect();
+        $this->assertDatabaseMissing('departments', ['id' => $dept->id]);
+
+        $plant = Plant::create(['code' => 'DEL-PLANT', 'name' => 'Delete Plant', 'is_active' => true]);
+        $response = $this->actingAs($this->admin)->delete("/admin/plants/{$plant->id}");
+        $response->assertRedirect();
+        $this->assertDatabaseMissing('plants', ['id' => $plant->id]);
+
+        $cat = MaterialCategory::create(['code' => 'DEL-CAT', 'name' => 'Delete Category', 'is_active' => true]);
+        $response = $this->actingAs($this->admin)->delete("/admin/categories/{$cat->id}");
+        $response->assertRedirect();
+        $this->assertDatabaseMissing('material_categories', ['id' => $cat->id]);
     }
 }

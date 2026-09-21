@@ -89,4 +89,25 @@ class MaterialCategoryController extends Controller
 
         return back()->with('success', "Material Category {$category->name} updated successfully.");
     }
+
+    public function destroy(MaterialCategory $category, Request $request): RedirectResponse
+    {
+        $this->authorize('delete', $category);
+
+        $oldData = $category->toArray();
+        $category->delete();
+
+        AuditService::log(
+            $request->user(),
+            'DELETE_CATEGORY',
+            'MasterData',
+            'MaterialCategory',
+            (string) $category->id,
+            $oldData,
+            null,
+            "Deleted material category {$oldData['name']} ({$oldData['code']})"
+        );
+
+        return back()->with('success', "Material Category {$oldData['name']} deleted successfully.");
+    }
 }

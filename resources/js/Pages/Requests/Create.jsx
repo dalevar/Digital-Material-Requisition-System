@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Head, useForm, Link } from "@inertiajs/react";
 import AppShell from "@/Layouts/AppShell";
 import MaterialSelect from "@/Components/MaterialSelect";
@@ -112,6 +112,13 @@ export default function Create({
         post("/requests");
     };
 
+    useEffect(() => {
+        // Jika data approvers ada dan approver_id belum terisi, set otomatis ke id pertama
+        if (approvers && approvers.length > 0 && !data.approver_id) {
+            setData("approver_id", approvers[0].id);
+        }
+    }, [approvers]);
+
     return (
         <AppShell title="Create Material Requisition" breadcrumbs={breadcrumbs}>
             <Head title="Create New Request - DMRS" />
@@ -180,20 +187,29 @@ export default function Create({
                                 <span className="text-red-600">*</span>
                             </label>
                             <select
-                                value={data.approver_id}
+                                value={data.approver_id || ""}
                                 onChange={(e) =>
                                     setData("approver_id", e.target.value)
                                 }
-                                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-md focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/20 disabled:bg-slate-100 disabled:text-slate-400"
                                 required
+                                disabled={!approvers || approvers.length === 0}
                             >
-                                <option value="">Select Approver...</option>
-                                {approvers.map((appr) => (
-                                    <option key={appr.id} value={appr.id}>
-                                        {appr.name} (
-                                        {appr.position || "Approver"})
+                                {/* Tampilkan handler/placeholder HANYA jika data approver belum ada */}
+                                {(!approvers || approvers.length === 0) && (
+                                    <option value="" disabled>
+                                        Data approver belum tersedia
                                     </option>
-                                ))}
+                                )}
+
+                                {/* Tampilkan list opsi approver jika data tersedia */}
+                                {approvers &&
+                                    approvers.map((appr) => (
+                                        <option key={appr.id} value={appr.id}>
+                                            {appr.name} (
+                                            {appr.position || "Approver"})
+                                        </option>
+                                    ))}
                             </select>
                             {errors.approver_id && (
                                 <p className="text-xs text-red-600 mt-1 font-medium">

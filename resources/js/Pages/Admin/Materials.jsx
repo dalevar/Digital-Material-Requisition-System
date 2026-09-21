@@ -3,7 +3,8 @@ import { Head, useForm, router, Link } from '@inertiajs/react';
 import AppShell from '@/Layouts/AppShell';
 import EmptyState from '@/Components/EmptyState';
 import ConfirmationModal from '@/Components/ConfirmationModal';
-import { Package, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight, Power, PowerOff, Download } from 'lucide-react';
+import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
+import { Package, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight, Power, PowerOff, Download, Trash2 } from 'lucide-react';
 
 function Pagination({ meta }) {
   if (!meta || meta.last_page <= 1) return null;
@@ -77,6 +78,26 @@ export default function MaterialsIndex({ materials = { data: [] }, categories = 
   const [editingMat, setEditingMat] = useState(null);
   const [toggleMat, setToggleMat] = useState(null);
   const [toggleModalOpen, setToggleModalOpen] = useState(false);
+  const [deleteMat, setDeleteMat] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const openDeleteModal = (m) => {
+    setDeleteMat(m);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteMat) return;
+    setDeleting(true);
+    router.delete(`/admin/materials/${deleteMat.id}`, {
+      onSuccess: () => {
+        setDeleteModalOpen(false);
+        setDeleteMat(null);
+      },
+      onFinish: () => setDeleting(false),
+    });
+  };
   const [search, setSearch] = useState(filters.search ?? '');
   const [catFilter, setCatFilter] = useState(filters.category_id ?? '');
   const [plantFilter, setPlantFilter] = useState(filters.plant_id ?? '');
@@ -380,6 +401,14 @@ export default function MaterialsIndex({ materials = { data: [] }, categories = 
                       >
                         {m.status === 'ACTIVE' ? <PowerOff className="w-4 h-4 text-rose-600" /> : <Power className="w-4 h-4 text-emerald-600" />}
                       </button>
+
+                      <button
+                        onClick={() => openDeleteModal(m)}
+                        className="p-1.5 text-slate-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+                        title="Delete Material Master"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-600" />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -556,6 +585,16 @@ export default function MaterialsIndex({ materials = { data: [] }, categories = 
         confirmText={toggleMat?.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
         cancelText="Cancel"
         variant={toggleMat?.status === 'ACTIVE' ? 'danger' : 'success'}
+      />
+      {/* Delete Material Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Material Master"
+        description="Are you sure you want to permanently delete this material master item?"
+        itemName={deleteMat ? `${deleteMat.material_number} - ${deleteMat.description}` : ''}
+        processing={deleting}
       />
     </AppShell>
   );

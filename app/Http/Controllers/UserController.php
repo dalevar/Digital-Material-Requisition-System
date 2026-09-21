@@ -173,4 +173,35 @@ class UserController extends Controller
 
         return back()->with('success', "Password for user {$user->username} has been reset successfully.");
     }
+
+    public function destroy(User $user, Request $request): RedirectResponse
+    {
+        $this->authorize('delete', $user);
+
+        if ($user->id === $request->user()->id) {
+            return back()->with('error', 'You cannot delete your own user account.');
+        }
+
+        $oldData = [
+            'id' => $user->id,
+            'username' => $user->username,
+            'name' => $user->name,
+            'email' => $user->email,
+        ];
+
+        $user->delete();
+
+        AuditService::log(
+            $request->user(),
+            'DELETE_USER',
+            'UserManagement',
+            'User',
+            (string) $user->id,
+            $oldData,
+            null,
+            "Deleted user {$oldData['username']}"
+        );
+
+        return back()->with('success', "User {$oldData['username']} deleted successfully.");
+    }
 }

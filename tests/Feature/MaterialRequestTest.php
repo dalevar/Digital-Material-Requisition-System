@@ -15,8 +15,10 @@ use App\Models\User;
 use App\Services\ApprovalService;
 use App\Services\InventoryService;
 use App\Services\MaterialRequestService;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class MaterialRequestTest extends TestCase
@@ -251,5 +253,73 @@ class MaterialRequestTest extends TestCase
         $this->assertEquals('Updated by Admin', $updated->reason);
         $this->assertEquals(1, $updated->items->count());
         $this->assertEquals(15, $updated->items->first()->qty);
+    }
+
+    public function test_requester_can_delete_own_draft_request(): void
+    {
+        $mrService = new MaterialRequestService;
+
+        $draft = $mrService->createDraft($this->user, [
+            'approver_id' => $this->approver->id,
+        ], [
+            ['material_id' => $this->material->id, 'qty' => 5],
+        ]);
+
+        $token = Str::random(40);
+        $response = $this->actingAs($this->user)
+            ->withSession(['_token' => $token])
+            ->delete("/requests/{$draft->id}", ['_token' => $token]);
+
+        $response->assertRedirect('/requests');
+        $this->assertDatabaseMissing('material_requests', ['id' => $draft->id]);
+    }
+
+    public function test_user_cannot_delete_another_users_draft(): void
+    {
+        $otherUserRole = Role::where('name', 'USER')->first();
+        $otherUser = User::create([
+            'employee_id' => 'EMP-999',
+            'username' => 'other_user',
+            'name' => 'Other User',
+            'email' => 'other@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => $otherUserRole->id,
+            'department_id' => $this->user->department_id,
+            'plant_id' => $this->user->plant_id,
+        ]);
+
+        $mrService = new MaterialRequestService;
+
+        $draft = $mrService->createDraft($this->user, [
+            'approver_id' => $this->approver->id,
+        ], [
+            ['material_id' => $this->material->id, 'qty' => 3],
+        ]);
+
+        $response = $this->actingAs($otherUser)
+            ->withoutMiddleware(ValidateCsrfToken::class)
+            ->delete("/requests/{$draft->id}");
+
+        $response->assertForbidden();
+        $this->assertDatabaseHas('material_requests', ['id' => $draft->id]);
+    }
+
+    public function test_cannot_delete_submitted_request(): void
+    {
+        $mrService = new MaterialRequestService;
+
+        $draft = $mrService->createDraft($this->user, [
+            'approver_id' => $this->approver->id,
+        ], [
+            ['material_id' => $this->material->id, 'qty' => 5],
+        ]);
+        $mrService->submitRequest($draft, $this->user);
+
+        $response = $this->actingAs($this->user)
+            ->withoutMiddleware(ValidateCsrfToken::class)
+            ->delete("/requests/{$draft->id}");
+
+        $response->assertForbidden();
+        $this->assertDatabaseHas('material_requests', ['id' => $draft->id]);
     }
 }

@@ -79,4 +79,21 @@ class MaterialRequestPolicy
     {
         return $user->isAdmin() && in_array($materialRequest->status, [MaterialRequestStatus::APPROVED, MaterialRequestStatus::PROCESSING]);
     }
+
+    public function delete(User $user, MaterialRequest $materialRequest): bool
+    {
+        if ($materialRequest->status !== MaterialRequestStatus::DRAFT) {
+            return false;
+        }
+
+        if ($user->isAdmin() || $user->isExecutive()) {
+            return true;
+        }
+
+        if ($user->isApprover()) {
+            return true;
+        }
+
+        return $materialRequest->requester_id === $user->id;
+    }
 }

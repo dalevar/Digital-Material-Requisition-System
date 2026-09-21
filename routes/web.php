@@ -89,26 +89,32 @@ Route::middleware('auth')->group(function () {
         Route::get('/admin/users', [UserController::class, 'index'])->name('admin.users.index');
         Route::post('/admin/users', [UserController::class, 'store'])->name('admin.users.store');
         Route::put('/admin/users/{user}', [UserController::class, 'update'])->name('admin.users.update');
+        Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->name('admin.users.destroy');
         Route::post('/admin/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('admin.users.reset-password');
 
         Route::get('/admin/materials', [MaterialController::class, 'index'])->name('admin.materials.index');
         Route::get('/admin/materials/excel', [MaterialController::class, 'exportExcel'])->name('admin.materials.excel');
         Route::post('/admin/materials', [MaterialController::class, 'store'])->name('admin.materials.store');
         Route::put('/admin/materials/{material}', [MaterialController::class, 'update'])->name('admin.materials.update');
+        Route::delete('/admin/materials/{material}', [MaterialController::class, 'destroy'])->name('admin.materials.destroy');
 
         Route::get('/admin/departments', [DepartmentController::class, 'index'])->name('admin.departments.index');
         Route::post('/admin/departments', [DepartmentController::class, 'store'])->name('admin.departments.store');
         Route::put('/admin/departments/{department}', [DepartmentController::class, 'update'])->name('admin.departments.update');
+        Route::delete('/admin/departments/{department}', [DepartmentController::class, 'destroy'])->name('admin.departments.destroy');
 
         Route::get('/admin/plants', [PlantController::class, 'index'])->name('admin.plants.index');
         Route::post('/admin/plants', [PlantController::class, 'store'])->name('admin.plants.store');
         Route::put('/admin/plants/{plant}', [PlantController::class, 'update'])->name('admin.plants.update');
+        Route::delete('/admin/plants/{plant}', [PlantController::class, 'destroy'])->name('admin.plants.destroy');
 
         Route::get('/admin/categories', [MaterialCategoryController::class, 'index'])->name('admin.categories.index');
         Route::post('/admin/categories', [MaterialCategoryController::class, 'store'])->name('admin.categories.store');
         Route::put('/admin/categories/{category}', [MaterialCategoryController::class, 'update'])->name('admin.categories.update');
+        Route::delete('/admin/categories/{category}', [MaterialCategoryController::class, 'destroy'])->name('admin.categories.destroy');
 
         Route::get('/admin/audit-logs', [AuditLogController::class, 'index'])->name('admin.audit.index');
+        Route::get('/admin/audit-logs/excel', [AuditLogController::class, 'exportExcel'])->name('admin.audit.excel');
 
         // Admin Approved MRF Supplement & Cancellation
         Route::patch('/admin/requests/{materialRequest}/supplement', [MaterialRequestController::class, 'supplement'])->name('admin.requests.supplement');
@@ -138,6 +144,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/requests/{materialRequest}', [MaterialRequestController::class, 'update'])->name('requests.update');
     Route::post('/requests/{materialRequest}/submit', [MaterialRequestController::class, 'submit'])->name('requests.submit');
     Route::get('/requests/{materialRequest}/pdf', [MaterialRequestController::class, 'downloadPdf'])->name('requests.pdf');
+    Route::delete('/requests/{materialRequest}', [MaterialRequestController::class, 'destroy'])->name('requests.destroy');
 
     // Report Routes
     Route::get('/reports/requests', [ReportController::class, 'requestReport'])->name('reports.requests');

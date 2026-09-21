@@ -282,6 +282,17 @@ class MaterialRequestController extends Controller
         return back()->with('success', 'Approved request cancelled by Admin and stock reversed if applicable.');
     }
 
+    public function destroy(MaterialRequest $materialRequest): RedirectResponse
+    {
+        $this->authorize('delete', $materialRequest);
+
+        $requestNo = $materialRequest->request_no;
+        $materialRequest->items()->delete();
+        $materialRequest->delete();
+
+        return redirect()->route('requests.index')->with('success', "Draft request {$requestNo} has been permanently deleted.");
+    }
+
     public function downloadPdf(MaterialRequest $materialRequest, PdfService $pdfService)
     {
         $this->authorize('view', $materialRequest);

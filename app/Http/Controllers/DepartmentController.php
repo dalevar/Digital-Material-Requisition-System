@@ -89,4 +89,25 @@ class DepartmentController extends Controller
 
         return back()->with('success', "Department {$department->name} updated successfully.");
     }
+
+    public function destroy(Department $department, Request $request): RedirectResponse
+    {
+        $this->authorize('delete', $department);
+
+        $oldData = $department->toArray();
+        $department->delete();
+
+        AuditService::log(
+            $request->user(),
+            'DELETE_DEPARTMENT',
+            'MasterData',
+            'Department',
+            (string) $department->id,
+            $oldData,
+            null,
+            "Deleted department {$oldData['name']} ({$oldData['code']})"
+        );
+
+        return back()->with('success', "Department {$oldData['name']} deleted successfully.");
+    }
 }

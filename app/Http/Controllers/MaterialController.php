@@ -180,4 +180,25 @@ class MaterialController extends Controller
 
         return back()->with('success', "Material {$material->material_number} updated successfully.");
     }
+
+    public function destroy(Material $material, Request $request): RedirectResponse
+    {
+        $this->authorize('delete', $material);
+
+        $oldData = $material->toArray();
+        $material->delete();
+
+        AuditService::log(
+            $request->user(),
+            'DELETE_MATERIAL',
+            'MasterData',
+            'Material',
+            (string) $material->id,
+            $oldData,
+            null,
+            "Deleted material {$oldData['material_number']}"
+        );
+
+        return back()->with('success', "Material {$oldData['material_number']} deleted successfully.");
+    }
 }

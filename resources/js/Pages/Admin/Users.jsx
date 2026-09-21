@@ -3,7 +3,8 @@ import { Head, useForm, router, Link } from '@inertiajs/react';
 import AppShell from '@/Layouts/AppShell';
 import EmptyState from '@/Components/EmptyState';
 import ConfirmationModal from '@/Components/ConfirmationModal';
-import { Users as UsersIcon, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight, KeyRound, Power, PowerOff } from 'lucide-react';
+import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
+import { Users as UsersIcon, Plus, Edit, Search, Filter, X, ChevronLeft, ChevronRight, KeyRound, Power, PowerOff, Trash2 } from 'lucide-react';
 
 function Pagination({ meta }) {
   if (!meta || meta.last_page <= 1) return null;
@@ -79,6 +80,26 @@ export default function UsersIndex({ users, roles = [], departments = [], plants
   const [toggleModalOpen, setToggleModalOpen] = useState(false);
   const [resetUser, setResetUser] = useState(null);
   const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [deleteUser, setDeleteUser] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const openDeleteModal = (u) => {
+    setDeleteUser(u);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteUser) return;
+    setDeleting(true);
+    router.delete(`/admin/users/${deleteUser.id}`, {
+      onSuccess: () => {
+        setDeleteModalOpen(false);
+        setDeleteUser(null);
+      },
+      onFinish: () => setDeleting(false),
+    });
+  };
 
   const [search, setSearch] = useState(filters.search ?? '');
   const [roleFilter, setRoleFilter] = useState(filters.role_id ?? '');
@@ -399,6 +420,14 @@ export default function UsersIndex({ users, roles = [], departments = [], plants
                       >
                         {u.status === 'ACTIVE' ? <PowerOff className="w-4 h-4 text-rose-600" /> : <Power className="w-4 h-4 text-emerald-600" />}
                       </button>
+
+                      <button
+                        onClick={() => openDeleteModal(u)}
+                        className="p-1.5 text-slate-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+                        title="Delete User"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-600" />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -639,6 +668,16 @@ export default function UsersIndex({ users, roles = [], departments = [], plants
           </div>
         </div>
       )}
+      {/* Delete User Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete User Account"
+        description="Are you sure you want to permanently delete this user account? All associated user records will be deleted."
+        itemName={deleteUser ? `${deleteUser.name} (${deleteUser.username}) - ID: ${deleteUser.employee_id}` : ''}
+        processing={deleting}
+      />
     </AppShell>
   );
 }
