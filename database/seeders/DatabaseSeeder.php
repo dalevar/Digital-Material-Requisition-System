@@ -52,12 +52,12 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             MaterialSeeder::class,
             StockBalanceSeeder::class,
-            MaterialRequestSeeder::class,
-            MaterialRequestItemSeeder::class,
-            ApprovalHistorySeeder::class,
-            StockTransactionSeeder::class,
-            NotificationSeeder::class,
-            AuditLogSeeder::class,
+            // MaterialRequestSeeder::class,
+            // MaterialRequestItemSeeder::class,
+            // ApprovalHistorySeeder::class,
+            // StockTransactionSeeder::class,
+            // NotificationSeeder::class,
+            // AuditLogSeeder::class,
         ]);
 
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
