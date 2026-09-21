@@ -105,7 +105,7 @@ class MaterialRequestSeeder extends Seeder
             'GL Account tidak sesuai dengan kategori material',
         ];
 
-        $totalRequests = 1000;
+        $totalRequests = 20;
         $now = now();
 
         // Date range: 2025-10-01 to 2026-09-21
@@ -117,9 +117,13 @@ class MaterialRequestSeeder extends Seeder
         $requestBatch = [];
         $batchSize = 100;
 
+        $guaranteedStatuses = ['DRAFT', 'APPROVED', 'REJECTED', 'COMPLETED'];
+
         for ($i = 0; $i < $totalRequests; $i++) {
             $requester = $regularUsers[$i % count($regularUsers)];
-            $status = $statusPool[$i % $statusPoolCount];
+            $status = $i < count($guaranteedStatuses)
+                ? $guaranteedStatuses[$i]
+                : $statusPool[$i % $statusPoolCount];
             $approverId = $requester->approver_id ?? $approverIds[0];
 
             // Generate realistic date (weighted towards weekdays)

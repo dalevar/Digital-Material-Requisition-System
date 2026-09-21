@@ -93,7 +93,7 @@ class UserSeeder extends Seeder
         ];
 
         $approverInserts = [];
-        for ($i = 0; $i < 20; $i++) {
+        for ($i = 0; $i < 4; $i++) {
             $empNum = str_pad($i + 3, 6, '0', STR_PAD_LEFT);
             $userNum = str_pad($i + 1, 3, '0', STR_PAD_LEFT);
 
@@ -135,42 +135,23 @@ class UserSeeder extends Seeder
             ->toArray();
 
         // ----------------------------------------------------------------
-        // 3. Regular users (78 users, EMP-000023 to EMP-000100)
+        // 3. Regular users
         // ----------------------------------------------------------------
         $userNames = [
             'Ahmad Fauzi',       'Bintang Ramadhan',  'Citra Dewi',       'Dian Puspita',
             'Eko Prasetyo',      'Fitra Nugraha',     'Gilang Santoso',   'Hani Safira',
             'Ivan Maulana',      'Joko Widodo',       'Kiki Andriani',    'Luki Firmansyah',
-            'Maya Putri',        'Nanda Kurnia',      'Oscar Hidayat',    'Putri Lestari',
-            'Qori Handayani',    'Rizki Saputra',     'Sari Wulandari',   'Tomi Susanto',
-            'Umar Hakim',        'Vera Susanti',      'Wawan Setiawan',   'Xena Mahardika',
-            'Yudi Pratama',      'Zara Arafah',       'Aditya Nugroho',   'Bella Octavia',
-            'Cahyo Purnomo',     'Dimas Ardiansyah',  'Elsa Maharani',    'Fandi Akhmad',
-            'Gita Pramesti',     'Habib Rochman',     'Ima Sulistyowati', 'Jefri Hendra',
-            'Kartika Dewi',      'Lana Wulandari',    'Miko Pratama',     'Nina Safitri',
-            'Oky Rahardian',     'Pasha Nugraha',     'Qila Rahmawati',   'Rendi Kurniawan',
-            'Sandi Wijaya',      'Tara Anggraini',    'Udin Wahyudi',     'Vina Rahayu',
-            'Wisnu Hartono',     'Yanti Kusumawati',  'Zulfikri Hakim',   'Arief Budiman',
-            'Bunga Pitaloka',    'Ciko Mahendra',     'Dita Rahmalia',    'Erwin Susilo',
-            'Fahrul Sidiq',      'Gusty Prasetya',    'Hilda Amelia',     'Irfan Hamdani',
-            'Junita Sari',       'Kevin Pratama',     'Linda Setiani',    'Maman Supriatna',
-            'Nita Permata',      'Opik Rahmatulloh',  'Pipit Rahayu',     'Qonita Salma',
-            'Reza Permadi',      'Silvi Anggraini',   'Teguh Santoso',    'Uswatun Hasanah',
-            'Vicky Wibisono',    'Wendi Prasetio',    'Xander Simanjuntak', 'Yuni Astuti',
+            'Maya Putri',
         ];
 
         $userPositions = [
             'Field Technician',          'Senior Field Technician',   'Maintenance Technician',
             'Electrical Technician',     'Mechanical Technician',     'Production Operator',
             'Warehouse Staff',           'Logistics Coordinator',     'Procurement Staff',
-            'Engineering Staff',         'HSE Officer',               'Quality Inspector',
-            'Planning Staff',            'Operations Technician',     'Instrument Technician',
-            'Pump Technician',           'Welder',                    'Piping Technician',
-            'Process Operator',          'Control Room Operator',
         ];
 
         $userInserts = [];
-        for ($i = 0; $i < 78; $i++) {
+        for ($i = 0; $i < 12; $i++) {
             $empNum = str_pad($i + 23, 6, '0', STR_PAD_LEFT);
             $userNum = str_pad($i + 1, 3, '0', STR_PAD_LEFT);
             $nameIdx = $i % count($userNames);

@@ -40,7 +40,7 @@ class NotificationSeeder extends Seeder
         $notifBatch = [];
         $batchSize = 500;
         $total = 0;
-        $targetTotal = 2000;
+        $targetTotal = 20;
 
         // ---------------------------------------------------------------
         // 1. Notification from actual request statuses

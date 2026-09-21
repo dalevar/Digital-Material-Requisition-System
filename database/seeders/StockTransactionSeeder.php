@@ -79,15 +79,16 @@ class StockTransactionSeeder extends Seeder
             return;
         }
 
-        $totalTarget = 10000;
+        $totalTarget = 20;
         $allTransactions = [];
         $batchSize = 500;
 
         // ---------------------------------------------------------------
-        // Phase 1: Initial STOCK_IN for all materials (historical setup)
+        // Phase 1: Initial STOCK_IN for materials (historical setup)
         // ---------------------------------------------------------------
         $this->command->info('Phase 1: Initial stock-in transactions...');
-        foreach ($activeMaterials as $mat) {
+        $initMaterials = array_slice($activeMaterials, 0, 10);
+        foreach ($initMaterials as $mat) {
             $currentBalance = (float) ($stockBalances[$mat->id] ?? 0);
             // Create a historical initial stock-in 12 months ago
             $initDate = $startDate->copy()->addDays(mt_rand(0, 10))->toDateTimeString();
@@ -304,9 +305,6 @@ class StockTransactionSeeder extends Seeder
         // ---------------------------------------------------------------
         $this->command->info('Phase 4: Reversal transactions for cancelled-after-approval...');
         foreach ($cancelledRequests as $idx => $req) {
-            if ($txGenerated >= $totalTarget) {
-                break;
-            }
 
             $mat = $activeMaterials[$idx % $matCount];
             $qtyOut = mt_rand(2, 8);

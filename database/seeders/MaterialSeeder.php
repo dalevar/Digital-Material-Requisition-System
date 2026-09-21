@@ -430,29 +430,8 @@ class MaterialSeeder extends Seeder
             $catIndex++;
         }
 
-        // If we have fewer than 500 materials, pad with generic entries
-        if (count($materials) < 500) {
-            $genericCategories = array_values($categoryMap);
-            while (count($materials) < 500) {
-                $catId = $genericCategories[$materialIndex % count($genericCategories)];
-                $matNum = 'MAT-'.str_pad($materialIndex, 6, '0', STR_PAD_LEFT);
-                $materials[] = [
-                    'material_number' => $matNum,
-                    'description' => "General Supply Item {$materialIndex}",
-                    'category_id' => $catId,
-                    'uom' => 'PCS',
-                    'minimum_stock' => 10,
-                    'maximum_stock' => 100,
-                    'storage_location' => 'RACK-GEN',
-                    'plant_id' => $plantIds[$materialIndex % $plantCount],
-                    'qr_code' => $matNum,
-                    'status' => 'ACTIVE',
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ];
-                $materialIndex++;
-            }
-        }
+        // Limit materials array to 20 items total
+        $materials = array_slice($materials, 0, 20);
 
         // Batch insert with updateOrInsert to be idempotent
         $chunks = array_chunk($materials, 200);
