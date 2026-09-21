@@ -48,7 +48,7 @@ export default function UserDashboard({ stats = {}, recentRequests = [] }) {
             </div>
 
             {/* Metric Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
                 <StatCard
                     title="My Total Requests"
                     value={stats.myRequests || 0}
@@ -58,7 +58,7 @@ export default function UserDashboard({ stats = {}, recentRequests = [] }) {
                 <StatCard
                     title="Pending Approval"
                     value={stats.pending || 0}
-                    subtitle="Awaiting Executive / HoD review"
+                    subtitle="Awaiting review"
                     icon={Clock}
                     variant={stats.pending > 0 ? "accent" : "default"}
                 />
@@ -66,6 +66,13 @@ export default function UserDashboard({ stats = {}, recentRequests = [] }) {
                     title="Approved Requests"
                     value={stats.approved || 0}
                     subtitle="Ready for stock processing"
+                    icon={CheckCircle2}
+                    variant="info"
+                />
+                <StatCard
+                    title="Completed Requests"
+                    value={stats.completed || 0}
+                    subtitle="Successfully processed"
                     icon={CheckCircle2}
                     variant="success"
                 />
