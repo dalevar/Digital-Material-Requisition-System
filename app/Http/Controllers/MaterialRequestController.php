@@ -2,16 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\MaterialRequestStatus;
 use App\Models\Department;
 use App\Models\Material;
 use App\Models\MaterialRequest;
 use App\Models\Plant;
 use App\Models\User;
+use App\Services\AuditService;
 use App\Services\InventoryService;
 use App\Services\MaterialRequestService;
 use App\Services\PdfService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -229,6 +232,7 @@ class MaterialRequestController extends Controller
             'reason' => ['nullable', 'string'],
             'approver_id' => ['nullable', 'exists:users,id'],
             'requester_id' => ['nullable', 'exists:users,id'],
+            'action' => ['nullable', 'string', 'in:save,submit'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.material_id' => ['required', 'exists:materials,id'],
             'items.*.qty' => ['required', 'numeric', 'gt:0'],
@@ -238,15 +242,27 @@ class MaterialRequestController extends Controller
 
         $service->updateRequest($materialRequest, $validated, $validated['items'], $request->user());
 
+        if (isset($validated['action']) && $validated['action'] === 'submit') {
+            $this->authorize('submit', $materialRequest->fresh());
+            $service->submitRequest($materialRequest->fresh(), $request->user());
+
+            return redirect()->route('requests.show', $materialRequest->id)->with('success', "Request {$materialRequest->request_no} updated and submitted for approval.");
+        }
+
         return redirect()->route('requests.show', $materialRequest->id)->with('success', "Request {$materialRequest->request_no} updated successfully.");
     }
 
     public function submit(MaterialRequest $materialRequest, MaterialRequestService $service): RedirectResponse
     {
-        $this->authorize('update', $materialRequest);
-        $service->submitRequest($materialRequest, auth()->user());
+        $this->authorize('submit', $materialRequest);
 
-        return back()->with('success', "Request {$materialRequest->request_no} submitted for approval.");
+        try {
+            $service->submitRequest($materialRequest, auth()->user());
+
+            return back()->with('success', "Request {$materialRequest->request_no} submitted for approval.");
+        } catch (\Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
     }
 
     public function supplement(MaterialRequest $materialRequest, Request $request, MaterialRequestService $service): RedirectResponse
@@ -286,11 +302,39 @@ class MaterialRequestController extends Controller
     {
         $this->authorize('delete', $materialRequest);
 
-        $requestNo = $materialRequest->request_no;
-        $materialRequest->items()->delete();
-        $materialRequest->delete();
+        if ($materialRequest->status !== MaterialRequestStatus::DRAFT) {
+            return back()->with('error', 'Only draft requests can be deleted.');
+        }
 
-        return redirect()->route('requests.index')->with('success', "Draft request {$requestNo} has been permanently deleted.");
+        $user = auth()->user();
+        $requestNo = $materialRequest->request_no;
+        $requester = $materialRequest->requester;
+
+        DB::transaction(function () use ($user, $materialRequest, $requestNo, $requester) {
+            AuditService::log(
+                $user,
+                'DELETE_DRAFT',
+                'MaterialRequest',
+                'MaterialRequest',
+                (string) $materialRequest->id,
+                [
+                    'request_no' => $requestNo,
+                    'status' => $materialRequest->status->value,
+                    'requester_id' => $materialRequest->requester_id,
+                    'requester_name' => $requester?->name,
+                    'item_count' => $materialRequest->items()->count(),
+                ],
+                null,
+                ($user->isAdmin() && $user->id !== $materialRequest->requester_id)
+                    ? "Admin {$user->name} deleted draft material request {$requestNo} belonging to ".($requester?->name ?? 'User')
+                    : "Draft material request {$requestNo} deleted"
+            );
+
+            $materialRequest->items()->delete();
+            $materialRequest->delete();
+        });
+
+        return redirect()->route('requests.index')->with('success', "Draft request {$requestNo} has been deleted.");
     }
 
     public function downloadPdf(MaterialRequest $materialRequest, PdfService $pdfService)

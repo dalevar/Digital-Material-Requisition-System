@@ -125,24 +125,25 @@ class MaterialRequestService
 
     public function submitRequest(MaterialRequest $request, User $user): MaterialRequest
     {
-        if (! $request->status->canTransitionTo(MaterialRequestStatus::PENDING_APPROVAL)) {
-            throw new Exception("Invalid status transition from {$request->status->value} to PENDING_APPROVAL");
+        if ($request->status !== MaterialRequestStatus::DRAFT) {
+            throw new Exception('Only draft requests can be submitted.');
         }
 
         if ($request->items()->count() === 0) {
             throw new Exception('Cannot submit request without any material items.');
         }
 
-        $approverId = $request->approver_id ?? $user->approver_id;
+        $requester = $request->requester ?: User::find($request->requester_id);
+        $approverId = $request->approver_id ?? $requester?->approver_id;
         if (! $approverId) {
-            throw new Exception('Approver must be designated before submitting request.');
+            throw new Exception('No approver is configured for this request. Please contact administrator.');
         }
 
-        if ($user->id === (int) $approverId) {
+        if ((int) $request->requester_id === (int) $approverId) {
             throw new Exception('Requester cannot approve their own request.');
         }
 
-        return DB::transaction(function () use ($request, $approverId, $user) {
+        return DB::transaction(function () use ($request, $approverId, $user, $requester) {
             $oldStatus = $request->status->value;
 
             $request->update([
@@ -156,20 +157,30 @@ class MaterialRequestService
                     $approver,
                     'PENDING_APPROVAL',
                     'New Request Pending Approval',
-                    "Request {$request->request_no} from {$user->name} requires your approval.",
+                    "Request {$request->request_no} from ".($requester?->name ?? 'Requester').' requires your approval.',
                     ['request_id' => $request->id, 'request_no' => $request->request_no]
                 );
             }
 
+            $description = ($user->isAdmin() && $user->id !== $request->requester_id)
+                ? "Admin {$user->name} submitted draft material request {$request->request_no} on behalf of requester"
+                : "Submitted request {$request->request_no} for approval";
+
             AuditService::log(
                 $user,
-                'SUBMIT_REQUEST',
+                'SUBMIT_DRAFT',
                 'MaterialRequest',
                 'MaterialRequest',
                 (string) $request->id,
                 ['status' => $oldStatus],
-                ['status' => MaterialRequestStatus::PENDING_APPROVAL->value],
-                "Submitted request {$request->request_no} for approval"
+                [
+                    'status' => MaterialRequestStatus::PENDING_APPROVAL->value,
+                    'request_no' => $request->request_no,
+                    'requester_id' => $request->requester_id,
+                    'actor_id' => $user->id,
+                    'actor_role' => $user->role?->name,
+                ],
+                $description
             );
 
             return $request;

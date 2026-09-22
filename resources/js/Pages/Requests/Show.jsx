@@ -21,6 +21,7 @@ import {
     ShieldCheck,
     Info,
     Trash2,
+    Send,
 } from "lucide-react";
 
 export default function Show({ request, plants = [] }) {
@@ -40,6 +41,8 @@ export default function Show({ request, plants = [] }) {
     const [stockOutProcessing, setStockOutProcessing] = useState(false);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [deleteProcessing, setDeleteProcessing] = useState(false);
+    const [submitModalOpen, setSubmitModalOpen] = useState(false);
+    const [submitProcessing, setSubmitProcessing] = useState(false);
 
     // Forms
     const approveForm = useForm({ reason: "" });
@@ -108,6 +111,20 @@ export default function Show({ request, plants = [] }) {
         });
     };
 
+    const handleConfirmSubmit = () => {
+        setSubmitProcessing(true);
+        router.post(
+            `/requests/${request.id}/submit`,
+            {},
+            {
+                onFinish: () => {
+                    setSubmitProcessing(false);
+                    setSubmitModalOpen(false);
+                },
+            },
+        );
+    };
+
     const canApprove =
         (user.role === "APPROVER" ||
             user.role === "EXECUTIVE" ||
@@ -123,12 +140,14 @@ export default function Show({ request, plants = [] }) {
             : user.id === request.requester_id &&
               ["DRAFT", "COMPLETED", "APPROVED"].includes(request.status);
 
+    const canSubmit =
+        (user.role === "ADMIN" || user.id === request.requester_id) &&
+        request.status === "DRAFT";
+
     const canDelete =
         (user.role === "ADMIN" ||
-            user.role === "APPROVER" ||
-            user.role === "EXECUTIVE" ||
-            user.id === request.requester_id) &&
-        ["DRAFT"].includes(request.status);
+            (user.role === "USER" && user.id === request.requester_id)) &&
+        request.status === "DRAFT";
 
     const canSupplement =
         user.role === "ADMIN" &&
@@ -217,6 +236,16 @@ export default function Show({ request, plants = [] }) {
                                 <span>Reject Request</span>
                             </button>
                         </>
+                    )}
+
+                    {canSubmit && (
+                        <button
+                            onClick={() => setSubmitModalOpen(true)}
+                            className="inline-flex items-center space-x-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-semibold shadow-xs transition-colors"
+                        >
+                            <Send className="w-4 h-4" />
+                            <span>Submit Request</span>
+                        </button>
                     )}
 
                     {canEdit && (
@@ -970,9 +999,9 @@ export default function Show({ request, plants = [] }) {
                 isOpen={deleteModalOpen}
                 onClose={() => setDeleteModalOpen(false)}
                 onConfirm={handleConfirmDelete}
-                title="Delete Draft Request"
-                description="Are you sure you want to permanently delete this draft request? This action cannot be undone."
-                confirmText="Delete Permanently"
+                title="Delete Draft Request?"
+                description="Are you sure you want to delete this draft?"
+                confirmText="Delete Draft"
                 cancelText="Cancel"
                 variant="danger"
                 processing={deleteProcessing}
@@ -989,8 +1018,37 @@ export default function Show({ request, plants = [] }) {
                     <div className="p-2.5 bg-red-50 border border-red-200 rounded-md text-red-900 text-[11px] font-medium flex items-start space-x-2">
                         <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                         <span>
-                            All items in this draft will be permanently removed
-                            from the system.
+                            This action cannot be undone.
+                        </span>
+                    </div>
+                </div>
+            </ConfirmationModal>
+
+            {/* Submit Draft Request Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={submitModalOpen}
+                onClose={() => setSubmitModalOpen(false)}
+                onConfirm={handleConfirmSubmit}
+                title="Submit Draft Request?"
+                description="Are you sure you want to submit this draft request for approval?"
+                confirmText="Submit Request"
+                cancelText="Cancel"
+                variant="success"
+                processing={submitProcessing}
+            >
+                <div className="space-y-2 bg-slate-50 p-3.5 rounded-lg border border-slate-200 text-xs mt-2">
+                    <div>
+                        <span className="font-semibold text-slate-500">
+                            Request Number:{" "}
+                        </span>
+                        <span className="font-bold font-mono text-slate-900">
+                            {request.request_no}
+                        </span>
+                    </div>
+                    <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-md text-emerald-900 text-[11px] font-medium flex items-start space-x-2">
+                        <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <span>
+                            Once submitted, the request status will change to Pending Approval and notification will be sent to the designated approver.
                         </span>
                     </div>
                 </div>

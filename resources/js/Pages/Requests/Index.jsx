@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import AppShell from '@/Layouts/AppShell';
 import StatusBadge from '@/Components/StatusBadge';
 import EmptyState from '@/Components/EmptyState';
-import { PlusCircle, Search, Filter, FileText, Download, FilePlus, X } from 'lucide-react';
+import ConfirmationModal from '@/Components/ConfirmationModal';
+import { PlusCircle, Search, Filter, FileText, Download, FilePlus, X, Edit, Trash2, Send, AlertTriangle, Info } from 'lucide-react';
 
 export default function Index({
   requests = { data: [] },
@@ -12,9 +13,43 @@ export default function Index({
   plants = [],
   approvers = [],
 }) {
+  const { auth } = usePage().props;
+  const user = auth.user;
+
   const breadcrumbs = [
     { title: 'Material Requests', href: null },
   ];
+
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteProcessing, setDeleteProcessing] = useState(false);
+  const [submitTarget, setSubmitTarget] = useState(null);
+  const [submitProcessing, setSubmitProcessing] = useState(false);
+
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+    setDeleteProcessing(true);
+    router.delete(`/requests/${deleteTarget.id}`, {
+      onFinish: () => {
+        setDeleteProcessing(false);
+        setDeleteTarget(null);
+      },
+    });
+  };
+
+  const handleConfirmSubmit = () => {
+    if (!submitTarget) return;
+    setSubmitProcessing(true);
+    router.post(
+      `/requests/${submitTarget.id}/submit`,
+      {},
+      {
+        onFinish: () => {
+          setSubmitProcessing(false);
+          setSubmitTarget(null);
+        },
+      }
+    );
+  };
 
   const [search, setSearch] = useState(filters.search || '');
   const [status, setStatus] = useState(filters.status || '');
@@ -271,35 +306,68 @@ export default function Index({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {requests.data.map((req) => (
-                  <tr key={req.id} className="hover:bg-red-50/20 transition-colors">
-                    <td className="px-4 py-3 font-bold text-red-700">{req.request_no}</td>
-                    <td className="px-4 py-3 font-medium text-slate-500">{req.no_doc || '-'}</td>
-                    <td className="px-4 py-3 font-medium text-slate-900">{req.requester?.name || '-'}</td>
-                    <td className="px-4 py-3">{req.department?.name || '-'}</td>
-                    <td className="px-4 py-3 text-slate-600">{req.request_date}</td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={req.status} />
-                    </td>
-                    <td className="px-4 py-3 text-right space-x-2">
-                      <a
-                        href={`/requests/${req.id}/pdf`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-1.5 inline-flex items-center text-slate-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
-                        title="Download Official PDF MRF"
-                      >
-                        <Download className="w-4 h-4" />
-                      </a>
-                      <Link
-                        href={`/requests/${req.id}`}
-                        className="px-3 py-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-md font-semibold text-xs transition-colors"
-                      >
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                {requests.data.map((req) => {
+                  const isDraft = req.status === 'DRAFT';
+                  const canEdit = isDraft && (user?.role === 'ADMIN' || user?.id === req.requester_id);
+                  const canSubmit = isDraft && (user?.role === 'ADMIN' || user?.id === req.requester_id);
+                  const canDelete = isDraft && (user?.role === 'ADMIN' || (user?.role === 'USER' && user?.id === req.requester_id));
+
+                  return (
+                    <tr key={req.id} className="hover:bg-red-50/20 transition-colors">
+                      <td className="px-4 py-3 font-bold text-red-700">{req.request_no}</td>
+                      <td className="px-4 py-3 font-medium text-slate-500">{req.no_doc || '-'}</td>
+                      <td className="px-4 py-3 font-medium text-slate-900">{req.requester?.name || '-'}</td>
+                      <td className="px-4 py-3">{req.department?.name || '-'}</td>
+                      <td className="px-4 py-3 text-slate-600">{req.request_date}</td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={req.status} />
+                      </td>
+                      <td className="px-4 py-3 text-right space-x-1.5">
+                        <a
+                          href={`/requests/${req.id}/pdf`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="p-1 inline-flex items-center text-slate-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                          title="Download Official PDF MRF"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </a>
+                        <Link
+                          href={`/requests/${req.id}`}
+                          className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded font-semibold text-xs transition-colors"
+                        >
+                          View
+                        </Link>
+                        {canEdit && (
+                          <Link
+                            href={`/requests/${req.id}/edit`}
+                            className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded font-semibold text-xs transition-colors"
+                          >
+                            Edit
+                          </Link>
+                        )}
+                        {canSubmit && (
+                          <button
+                            type="button"
+                            onClick={() => setSubmitTarget(req)}
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-semibold text-xs transition-colors"
+                          >
+                            Submit
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(req)}
+                            className="px-2.5 py-1 border border-red-700 hover:bg-red-700 text-red-700 hover:text-white rounded font-semibold text-xs transition-colors"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -311,6 +379,58 @@ export default function Index({
           />
         )}
       </div>
+
+      {/* Delete Draft Request Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Draft Request?"
+        description="Are you sure you want to delete this draft?"
+        confirmText="Delete Draft"
+        cancelText="Cancel"
+        variant="danger"
+        processing={deleteProcessing}
+      >
+        {deleteTarget && (
+          <div className="space-y-2 bg-slate-50 p-3.5 rounded-lg border border-slate-200 text-xs mt-2">
+            <div>
+              <span className="font-semibold text-slate-500">Request Number: </span>
+              <span className="font-bold font-mono text-slate-900">{deleteTarget.request_no}</span>
+            </div>
+            <div className="p-2.5 bg-red-50 border border-red-200 rounded-md text-red-900 text-[11px] font-medium flex items-start space-x-2">
+              <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+              <span>This action cannot be undone.</span>
+            </div>
+          </div>
+        )}
+      </ConfirmationModal>
+
+      {/* Submit Draft Request Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={Boolean(submitTarget)}
+        onClose={() => setSubmitTarget(null)}
+        onConfirm={handleConfirmSubmit}
+        title="Submit Draft Request?"
+        description="Are you sure you want to submit this draft request for approval?"
+        confirmText="Submit Request"
+        cancelText="Cancel"
+        variant="success"
+        processing={submitProcessing}
+      >
+        {submitTarget && (
+          <div className="space-y-2 bg-slate-50 p-3.5 rounded-lg border border-slate-200 text-xs mt-2">
+            <div>
+              <span className="font-semibold text-slate-500">Request Number: </span>
+              <span className="font-bold font-mono text-slate-900">{submitTarget.request_no}</span>
+            </div>
+            <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-md text-emerald-900 text-[11px] font-medium flex items-start space-x-2">
+              <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <span>Once submitted, the request status will change to Pending Approval.</span>
+            </div>
+          </div>
+        )}
+      </ConfirmationModal>
     </AppShell>
   );
 }

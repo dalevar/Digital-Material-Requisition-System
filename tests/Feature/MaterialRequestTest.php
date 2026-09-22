@@ -322,4 +322,161 @@ class MaterialRequestTest extends TestCase
         $response->assertForbidden();
         $this->assertDatabaseHas('material_requests', ['id' => $draft->id]);
     }
+
+    public function test_admin_can_delete_another_users_draft(): void
+    {
+        $mrService = new MaterialRequestService;
+
+        $draft = $mrService->createDraft($this->user, [
+            'approver_id' => $this->approver->id,
+        ], [
+            ['material_id' => $this->material->id, 'qty' => 5],
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->withoutMiddleware(ValidateCsrfToken::class)
+            ->delete("/requests/{$draft->id}");
+
+        $response->assertRedirect('/requests');
+        $this->assertDatabaseMissing('material_requests', ['id' => $draft->id]);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'user_id' => $this->admin->id,
+            'action' => 'DELETE_DRAFT',
+            'record_id' => (string) $draft->id,
+        ]);
+    }
+
+    public function test_approver_cannot_delete_draft(): void
+    {
+        $mrService = new MaterialRequestService;
+
+        $draft = $mrService->createDraft($this->user, [
+            'approver_id' => $this->approver->id,
+        ], [
+            ['material_id' => $this->material->id, 'qty' => 5],
+        ]);
+
+        $response = $this->actingAs($this->approver)
+            ->withoutMiddleware(ValidateCsrfToken::class)
+            ->delete("/requests/{$draft->id}");
+
+        $response->assertForbidden();
+        $this->assertDatabaseHas('material_requests', ['id' => $draft->id]);
+    }
+
+    public function test_user_can_submit_own_draft_via_controller(): void
+    {
+        $mrService = new MaterialRequestService;
+
+        $draft = $mrService->createDraft($this->user, [
+            'approver_id' => $this->approver->id,
+        ], [
+            ['material_id' => $this->material->id, 'qty' => 5],
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->withoutMiddleware(ValidateCsrfToken::class)
+            ->post("/requests/{$draft->id}/submit");
+
+        $response->assertRedirect();
+        $this->assertEquals(MaterialRequestStatus::PENDING_APPROVAL, $draft->fresh()->status);
+        $this->assertDatabaseHas('audit_logs', [
+            'user_id' => $this->user->id,
+            'action' => 'SUBMIT_DRAFT',
+            'record_id' => (string) $draft->id,
+        ]);
+    }
+
+    public function test_user_cannot_submit_another_users_draft(): void
+    {
+        $otherUserRole = Role::where('name', 'USER')->first();
+        $otherUser = User::create([
+            'employee_id' => 'EMP-888',
+            'username' => 'other_user_2',
+            'name' => 'Other User 2',
+            'email' => 'other2@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => $otherUserRole->id,
+            'department_id' => $this->user->department_id,
+            'plant_id' => $this->user->plant_id,
+        ]);
+
+        $mrService = new MaterialRequestService;
+
+        $draft = $mrService->createDraft($this->user, [
+            'approver_id' => $this->approver->id,
+        ], [
+            ['material_id' => $this->material->id, 'qty' => 5],
+        ]);
+
+        $response = $this->actingAs($otherUser)
+            ->withoutMiddleware(ValidateCsrfToken::class)
+            ->post("/requests/{$draft->id}/submit");
+
+        $response->assertForbidden();
+        $this->assertEquals(MaterialRequestStatus::DRAFT, $draft->fresh()->status);
+    }
+
+    public function test_admin_can_submit_another_users_draft_maintaining_requester(): void
+    {
+        $mrService = new MaterialRequestService;
+
+        $draft = $mrService->createDraft($this->user, [
+            'approver_id' => $this->approver->id,
+        ], [
+            ['material_id' => $this->material->id, 'qty' => 5],
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->withoutMiddleware(ValidateCsrfToken::class)
+            ->post("/requests/{$draft->id}/submit");
+
+        $response->assertRedirect();
+        $fresh = $draft->fresh();
+        $this->assertEquals(MaterialRequestStatus::PENDING_APPROVAL, $fresh->status);
+        $this->assertEquals($this->user->id, $fresh->requester_id); // Requester is still original user!
+
+        $this->assertDatabaseHas('audit_logs', [
+            'user_id' => $this->admin->id,
+            'action' => 'SUBMIT_DRAFT',
+            'record_id' => (string) $draft->id,
+        ]);
+    }
+
+    public function test_approver_cannot_submit_draft(): void
+    {
+        $mrService = new MaterialRequestService;
+
+        $draft = $mrService->createDraft($this->user, [
+            'approver_id' => $this->approver->id,
+        ], [
+            ['material_id' => $this->material->id, 'qty' => 5],
+        ]);
+
+        $response = $this->actingAs($this->approver)
+            ->withoutMiddleware(ValidateCsrfToken::class)
+            ->post("/requests/{$draft->id}/submit");
+
+        $response->assertForbidden();
+        $this->assertEquals(MaterialRequestStatus::DRAFT, $draft->fresh()->status);
+    }
+
+    public function test_cannot_submit_non_draft_request(): void
+    {
+        $mrService = new MaterialRequestService;
+
+        $draft = $mrService->createDraft($this->user, [
+            'approver_id' => $this->approver->id,
+        ], [
+            ['material_id' => $this->material->id, 'qty' => 5],
+        ]);
+        $mrService->submitRequest($draft, $this->user); // Status is now PENDING_APPROVAL
+
+        $response = $this->actingAs($this->user)
+            ->withoutMiddleware(ValidateCsrfToken::class)
+            ->post("/requests/{$draft->id}/submit");
+
+        $response->assertForbidden();
+    }
 }

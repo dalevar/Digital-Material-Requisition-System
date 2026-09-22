@@ -80,18 +80,35 @@ class MaterialRequestPolicy
         return $user->isAdmin() && in_array($materialRequest->status, [MaterialRequestStatus::APPROVED, MaterialRequestStatus::PROCESSING]);
     }
 
+    public function submit(User $user, MaterialRequest $materialRequest): bool
+    {
+        if ($materialRequest->status !== MaterialRequestStatus::DRAFT) {
+            return false;
+        }
+
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        if ($user->isApprover()) {
+            return false;
+        }
+
+        return $materialRequest->requester_id === $user->id;
+    }
+
     public function delete(User $user, MaterialRequest $materialRequest): bool
     {
         if ($materialRequest->status !== MaterialRequestStatus::DRAFT) {
             return false;
         }
 
-        if ($user->isAdmin() || $user->isExecutive()) {
+        if ($user->isAdmin()) {
             return true;
         }
 
         if ($user->isApprover()) {
-            return true;
+            return false;
         }
 
         return $materialRequest->requester_id === $user->id;

@@ -1,8 +1,8 @@
 import React from "react";
-import { Head, useForm, Link, usePage } from "@inertiajs/react";
+import { Head, useForm, Link, usePage, router } from "@inertiajs/react";
 import AppShell from "@/Layouts/AppShell";
 import MaterialSelect from "@/Components/MaterialSelect";
-import { Plus, Trash2, Save, ArrowLeft, Info, Edit3 } from "lucide-react";
+import { Plus, Trash2, Save, ArrowLeft, Info, Edit3, Send } from "lucide-react";
 
 export default function Edit({
     request,
@@ -138,9 +138,14 @@ export default function Edit({
         setData("items", newItems);
     };
 
-    const handleSubmit = (e) => {
+    const canSubmit = request.status === "DRAFT" && (isAdmin || user.id === request.requester_id);
+
+    const handleSubmit = (e, actionType = "save") => {
         e.preventDefault();
-        put(`/requests/${request.id}`);
+        router.put(`/requests/${request.id}`, {
+            ...data,
+            action: actionType,
+        });
     };
 
     return (
@@ -557,13 +562,26 @@ export default function Edit({
                         </Link>
 
                         <button
-                            type="submit"
+                            type="button"
+                            onClick={(e) => handleSubmit(e, "save")}
                             disabled={processing}
                             className="inline-flex items-center space-x-2 px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-md shadow-xs transition-all disabled:opacity-50"
                         >
                             <Save className="w-4 h-4" />
                             <span>Save Changes</span>
                         </button>
+
+                        {canSubmit && (
+                            <button
+                                type="button"
+                                onClick={(e) => handleSubmit(e, "submit")}
+                                disabled={processing}
+                                className="inline-flex items-center space-x-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-md shadow-xs transition-all disabled:opacity-50"
+                            >
+                                <Send className="w-4 h-4" />
+                                <span>Save & Submit</span>
+                            </button>
+                        )}
                     </div>
                 </div>
             </form>
